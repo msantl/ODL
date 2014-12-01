@@ -1,0 +1,28 @@
+http://sdnhub.org/tutorials/opendaylight/
+
+
+sudo service openvswitch-controller stop
+
+builds:~/Desktop/git_opendaylight/controller/opendaylight/distribution/opendaylight
+sudo mvn clean install -DskipTests
+
+runs: ~/Desktop/git_opendaylight/controller/opendaylight/distribution/opendaylight/target/distribution.opendaylight-osgipackage/opendaylight
+sudo ./run.sh
+
+
+sudo ./pox.py opennetmon.startup
+
+
+BUILD dodataka:
+~/controller/opendaylight/<dodatak>$ mvn clean install
+
+
+
+tutorial kako pisati za opendaylight:
+http://sdntutorials.com/hello-world-application-using-osgi-bundle/
+http://sdntutorials.com/testing-osgi-bundle-using-junit/
+
+
+opis tehnologija koristenih u opendaylightu:
+http://sdntutorials.com/opendaylight-and-osgi/
+

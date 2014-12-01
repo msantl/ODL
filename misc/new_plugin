@@ -1,0 +1,6 @@
+https://fredhsu.wordpress.com/2013/05/14/odl-maven-osgi/
+
+u kazalu upravljackog uredaja napraviti
+mvn archetype:generate -DgroupId=com.example -DartifactId=mystats -DarchetypeArtifactId=maven-archetype-quickstart -Dpackage=com.example.mystats -DinteractiveMode=false
+
+
