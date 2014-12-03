@@ -1,0 +1,17 @@
+SDNStatsCollector
+– Responsible for setting “counters” for every PN at specified network
+locations (physical or logical). A counter is a set of OpenFlow flow entries in ODC-enabled
+network switches and routers. The SDNStatsCollector periodically collects statistics from
+those counters and feeds them to the SDNBasedDetectionMgr (see the description below).
+The module uses the SDNStatsCollectionRep to both set the counters and read latest
+statistics from those counters. A stat report consists of read time, counter specification, PN
+label, and a list of trafficData information, where each trafficData element contains the
+latest bytes and packet values for flow entries configured for <protocol,port,direction> in
+the counter location. The protocol can be {tcp,udp,icmp,other ip}, the port is any Layer 4
+port, and the direction can be {inbound, outbound}.
+
+private static final long FLOW_STATS_PERIOD = 10000;
+private static final long DESC_STATS_PERIOD = 60000;
+private static final long PORT_STATS_PERIOD = 5000;    <-- Tx, Rx, Drops
+private static final long TABLE_STATS_PERIOD = 10000;
+private static final long TICK = 1000;
