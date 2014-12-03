@@ -1,0 +1,16 @@
+Teorija repova
+
+M/M/1/k u clanku
+M/M/1/oo teorija
+
+
+lambda  = bit/s, ulazno opterecenje repa
+mi      = izlazna snaga procesora, brzina linka
+
+modelirati delay kao neku funkciju loada, pri cemu je load
+funkcija f(lambda, mi).
+
+Naci kako OpenDaylight dohvaca statistike pojedinog switcha.
+
+Naci kako presresti usmjeravanje u OpenDaylightu.
+
