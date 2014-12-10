@@ -1,63 +1,154 @@
 package com.example.mystats;
 
 import java.util.List;
+import java.util.ArrayList;
+import java.util.Map;
+import java.util.HashMap;
 
-import org.opendaylight.controller.sal.core.Node;
 import org.opendaylight.controller.sal.utils.ServiceHelper;
+import org.opendaylight.controller.sal.core.Node;
+import org.opendaylight.controller.sal.core.NodeConnector;
 import org.opendaylight.controller.sal.reader.NodeConnectorStatistics;
 import org.opendaylight.controller.statisticsmanager.IStatisticsManager;
 import org.opendaylight.controller.switchmanager.ISwitchManager;
+import org.opendaylight.controller.switchmanager.Switch;
+import org.opendaylight.controller.sal.core.Property;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 
 public class MyStats{
-	private static final Logger log = LoggerFactory.getLogger(MyStats.class);
+    private static final Logger log = LoggerFactory.getLogger(MyStats.class);
 
-	public MyStats() {
+    public MyStats() {
 
-	}
+    }
 
-	void init() {
-		log.debug("INIT called!");
-	}
+    void init() {
+        log.debug("INIT called!");
+    }
 
-	void destroy() {
-		log.debug("DESTROY called!");
-	}
+    void destroy() {
+        log.debug("DESTROY called!");
+    }
 
-	void start() {
-		log.debug("START called!");
-		getFlowStatistics();
-	}
+    void start() {
+        log.debug("START called!");
+        getFlowStatistics();
+    }
 
-	void stop() {
-		log.debug("STOP called!");
-	}
+    void stop() {
+        log.debug("STOP called!");
+    }
 
-	void getFlowStatistics() {
-		String containerName = "default";
-		IStatisticsManager statsManager = (IStatisticsManager) ServiceHelper
-			.getInstance(IStatisticsManager.class, containerName, this);
+    public class Data {
+        private Node node;
+        private NodeConnector nc;
+        private long pkt_drop;
+        private long pkt_sent;
+        private String bandwidth;
 
-		ISwitchManager switchManager = (ISwitchManager) ServiceHelper
-			.getInstance(ISwitchManager.class, containerName, this);
+        public Data() {}
 
-		for (Node node : switchManager.getNodes()) {
-			List<NodeConnectorStatistics> stat = statsManager
-				.getNodeConnectorStatistics(node);
+        public Data(Node node,
+                    NodeConnector nc,
+                    long pkt_drop,
+                    long pkt_sent,
+                    String bandwidth) {
+            this.node = node;
+            this.nc = nc;
+            this.pkt_drop = pkt_drop;
+            this.pkt_sent = pkt_sent;
+            this.bandwidth = bandwidth;
+        }
 
-			System.out.println("Node: " + node);
-			for (NodeConnectorStatistics ncs : stat) {
-				long packet_loss = ncs.getReceiveDropCount() + ncs.getTransmitDropCount();
-				long rx = ncs.getReceivePacketCount();
-				long tx = ncs.getTransmitPacketCount();
-				System.out.println("\tNode connector " + ncs.getNodeConnector().getNodeConnectorIdAsString());
-				System.out.println("\t\tPacket loss " + packet_loss);
-				System.out.println("\t\tReceived " + rx);
-				System.out.println("\t\tTransmitted " + tx);
-			}
-			System.out.println();
-		}
-	}
+        public void setNode(Node node) {this.node = node;}
+        public void setNodeConnector(NodeConnector nc) {this.nc = nc;}
+        public void setPacketDrop(long pkt_drop) {this.pkt_drop = pkt_drop;}
+        public void setPacketSent(long pkt_sent) {this.pkt_sent = pkt_sent;}
+        public void setBandwidth(String bandwidth) {this.bandwidth = bandwidth;}
+
+        public Node getNode() {return this.node;}
+        public NodeConnector getNodeConnector() {return this.nc;}
+        public long getPacketDrop() {return this.pkt_drop;}
+        public long getPacketSent() {return this.pkt_sent;}
+        public String getBandwidth() {return this.bandwidth;}
+    }
+
+    void getFlowStatistics() {
+        String containerName = "default";
+        String propertyName = "bandwidth";
+
+        Map<Node, List<Data> > edge = new HashMap();
+
+        IStatisticsManager statsManager = (IStatisticsManager) ServiceHelper
+            .getInstance(IStatisticsManager.class, containerName, this);
+
+        ISwitchManager switchManager = (ISwitchManager) ServiceHelper
+            .getInstance(ISwitchManager.class, containerName, this);
+
+        List<Switch> switches =
+            switchManager.getNetworkDevices();
+
+        for (Switch swc : switches) {
+            Node node = swc.getNode();
+            List<NodeConnectorStatistics> stat = statsManager
+                .getNodeConnectorStatistics(node);
+
+            Map<NodeConnector, Data> node_data = new HashMap();
+
+            for (NodeConnector nc : swc.getNodeConnectors()) {
+                Map<String,Property> mp =
+                    switchManager.getNodeConnectorProps(nc);
+
+                Data data = new Data();
+
+                data.setNodeConnector(nc);
+                data.setBandwidth(mp.get(propertyName).getStringValue());
+
+                node_data.put(nc, data);
+            }
+
+            for (NodeConnectorStatistics ncs : stat) {
+                Data data = node_data.get(ncs.getNodeConnector());
+
+                if (data == null) {
+                    // statistics about switch<->controller
+                    continue;
+                }
+
+                long sent = ncs.getReceivePacketCount() + ncs.getTransmitPacketCount();
+                long drop = ncs.getReceiveDropCount() + ncs.getTransmitDropCount();
+
+                data.setPacketDrop(drop);
+                data.setPacketSent(sent);
+
+                node_data.put(ncs.getNodeConnector(), data);
+            }
+
+            List<Data> list_data = new ArrayList();
+
+            for (NodeConnector key : node_data.keySet()) {
+                list_data.add(node_data.get(key));
+            }
+
+            edge.put(node, list_data);
+
+        }
+
+        for (Node key : edge.keySet()) {
+            System.out.println("Switch: " + key.toString());
+
+            for (Data data : edge.get(key)) {
+                System.out.println("\tNodeConnector: " +
+                        data.getNodeConnector().getNodeConnectorIdAsString());
+                System.out.println("\tPacketDrop: " + data.getPacketDrop());
+                System.out.println("\tPacketSent: " + data.getPacketSent());
+                System.out.println("\tBandwidth: " + data.getBandwidth());
+                System.out.println("");
+            }
+        }
+
+        return;
+    }
 }
