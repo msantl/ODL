@@ -5,6 +5,12 @@ import java.util.List;
 import java.util.ArrayList;
 import java.util.Map;
 import java.util.HashMap;
+// import java.util.Collections;
+
+import java.util.LinkedHashMap;
+import java.util.Map.Entry;
+import java.util.Iterator;
+
 
 import org.opendaylight.controller.sal.utils.ServiceHelper;
 import org.opendaylight.controller.sal.core.Node;
@@ -20,9 +26,35 @@ import org.opendaylight.controller.switchmanager.Switch;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-
 public class MyStats{
     private static final Logger log = LoggerFactory.getLogger(MyStats.class);
+
+    private class LRUCache <K, V> extends LinkedHashMap <K, V> {
+
+        private final int capacity;
+
+        public LRUCache(int capacity) {
+            super(capacity+1, 1.0f, true);
+            this.capacity = capacity;
+        }
+
+        @Override
+        protected boolean removeEldestEntry(final Map.Entry<K, V> eldest) {
+            return (super.size() > this.capacity);
+        }
+
+        //  Map<String, String> cache = Collections.synchronizedMap(new LRUCache<String, String>(3));
+    }
+
+    void printMap(Map mp) {
+        Iterator it = mp.entrySet().iterator();
+        System.out.println("--------------------");
+        while (it.hasNext()) {
+            Map.Entry pairs = (Map.Entry)it.next();
+            System.out.println(pairs.getKey() + " = " + pairs.getValue());
+        }
+        System.out.println("--------------------");
+    }
 
     public MyStats() {
 
