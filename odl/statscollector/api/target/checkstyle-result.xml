@@ -1,7 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<checkstyle version="5.7">
-<file name="/home/msantl/Desktop/git_opendaylight/controller/opendaylight/statscollector/api/pom.xml">
-</file>
-<file name="/home/msantl/Desktop/git_opendaylight/controller/opendaylight/statscollector/api/src/main/java/com/example/statscollector/IStatsCollector.java">
-</file>
-</checkstyle>
