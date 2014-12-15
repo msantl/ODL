@@ -25,8 +25,6 @@
                     <instructions>
                         <Import-Package>
                             org.opendaylight.controller.sal.core,
-                            org.opendaylight.controller.statisticsmanager,
-                            org.opendaylight.controller.switchmanager,
                             org.opendaylight.controller.topologymanager,
                             org.opendaylight.controller.sal.utils,
                             org.opendaylight.controller.sal.reader,
@@ -57,14 +55,6 @@
         <dependency>
             <groupId>org.opendaylight.controller</groupId>
             <artifactId>sal</artifactId>
-        </dependency>
-         <dependency>
-            <groupId>org.opendaylight.controller</groupId>
-            <artifactId>statistics.northbound</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.opendaylight.controller</groupId>
-            <artifactId>statisticsmanager</artifactId>
         </dependency>
         <dependency>
             <groupId>org.opendaylight.controller</groupId>

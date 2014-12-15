@@ -68,7 +68,6 @@ public class StatsCollectorImpl implements IStatsCollector, IObjectReader{
 
     void init() {
         log.debug("INIT called!");
-        // init date
         // init thread
         statsCollector = new Thread(new StatsCollectorThread());
     }

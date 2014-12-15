@@ -14,10 +14,7 @@ import org.opendaylight.controller.sal.core.Node;
 import org.opendaylight.controller.sal.core.NodeConnector;
 import org.opendaylight.controller.sal.core.Edge;
 import org.opendaylight.controller.sal.core.Host;
-import org.opendaylight.controller.statisticsmanager.IStatisticsManager;
-import org.opendaylight.controller.switchmanager.ISwitchManager;
 import org.opendaylight.controller.topologymanager.ITopologyManager;
-import org.opendaylight.controller.switchmanager.Switch;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -67,12 +64,6 @@ public class MyStats{
         Map<Long, Map<Node, List<Data> > > res;
 
 
-        IStatisticsManager statsManager = (IStatisticsManager) ServiceHelper
-            .getInstance(IStatisticsManager.class, containerName, this);
-
-        ISwitchManager switchManager = (ISwitchManager) ServiceHelper
-            .getInstance(ISwitchManager.class, containerName, this);
-
         ITopologyManager topologyManager = (ITopologyManager) ServiceHelper
             .getInstance(ITopologyManager.class, containerName, this);
 
@@ -91,9 +82,6 @@ public class MyStats{
             System.out.println("StatsCollector not present!");
             return;
         }
-
-        List<Switch> switches =
-            switchManager.getNetworkDevices();
 
 
         // get topology information
@@ -152,6 +140,9 @@ public class MyStats{
                         data.getNodeConnector().getNodeConnectorIdAsString());
                 System.out.println("\tPacketDrop: " + data.getPacketDrop());
                 System.out.println("\tPacketSent: " + data.getPacketSent());
+
+                System.out.println("\tTx count: " + data.getTxCount());
+                System.out.println("\tRx count: " + data.getRxCount());
                 System.out.println("\tBandwidth: " + data.getBandwidth());
                 System.out.println("");
             }

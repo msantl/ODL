@@ -1,5 +1,5 @@
 Manifest-Version: 1.0
-Bnd-LastModified: 1418648673246
+Bnd-LastModified: 1418651909232
 Build-Jdk: 1.7.0_65
 Built-By: msantl
 Bundle-Activator: com.example.mystats.Activator
@@ -9,17 +9,14 @@ Bundle-SymbolicName: com.example.mystats
 Bundle-Version: 1.5.0.SNAPSHOT
 Created-By: Apache Maven Bundle Plugin
 Export-Package: com.example.mystats;uses:="org.opendaylight.controller.s
- al.core,org.apache.felix.dm,org.slf4j,org.opendaylight.controller.stati
- sticsmanager,com.example.statscollector,org.opendaylight.controller.top
- ologymanager,org.opendaylight.controller.switchmanager,org.opendaylight
- .controller.sal.utils";version="1.5.0.SNAPSHOT"
+ al.core,org.apache.felix.dm,org.slf4j,org.opendaylight.controller.topol
+ ogymanager,com.example.statscollector,org.opendaylight.controller.sal.u
+ tils";version="1.5.0.SNAPSHOT"
 Import-Package: com.example.statscollector;version="[1.5,2)",org.apache.
  felix.dm;version="[3.0,4)",org.opendaylight.controller.sal.core;version
  ="[0.9,1)",org.opendaylight.controller.sal.flowprogrammer;version="[0.9
  ,1)",org.opendaylight.controller.sal.match;version="[0.9,1)",org.openda
  ylight.controller.sal.reader;version="[0.9,1)",org.opendaylight.control
- ler.sal.utils;version="[0.9,1)",org.opendaylight.controller.statisticsm
- anager;version="[0.6,1)",org.opendaylight.controller.switchmanager;vers
- ion="[0.8,1)",org.opendaylight.controller.topologymanager;version="[0.5
- ,1)",org.slf4j;version="[1.7,2)"
+ ler.sal.utils;version="[0.9,1)",org.opendaylight.controller.topologyman
+ ager;version="[0.5,1)",org.slf4j;version="[1.7,2)"
 Tool: Bnd-1.50.0
