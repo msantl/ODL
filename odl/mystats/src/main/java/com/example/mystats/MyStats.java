@@ -63,7 +63,6 @@ public class MyStats{
         Map<Node, List<Data> > edge = new HashMap();
         Map<Long, Map<Node, List<Data> > > res;
 
-
         ITopologyManager topologyManager = (ITopologyManager) ServiceHelper
             .getInstance(ITopologyManager.class, containerName, this);
 
