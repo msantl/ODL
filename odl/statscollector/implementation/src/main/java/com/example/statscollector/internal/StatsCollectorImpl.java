@@ -37,6 +37,7 @@ public class StatsCollectorImpl implements IStatsCollector, IObjectReader{
     private final Map<Long, Map<Node, List<Data> > > Cache = Collections
         .synchronizedMap(new LRUCache<Long, Map<Node, List<Data> > >(1000));
 
+    // LRU cache class used to store limited data about stats
     private class LRUCache <K, V> extends LinkedHashMap <K, V> {
 
         private final int capacity;
@@ -90,6 +91,7 @@ public class StatsCollectorImpl implements IStatsCollector, IObjectReader{
 
     Map<Node, List<Data> > getCurrentStatistics() {
         String containerName = "default";
+        // key for the property map that contains the bandwodth information
         String propertyName = "bandwidth";
 
         Map<Node, List<Data> > edge = new HashMap();
@@ -102,19 +104,24 @@ public class StatsCollectorImpl implements IStatsCollector, IObjectReader{
 
         // get statistics and bandwidth property
         for (Switch swc : switchManager.getNetworkDevices()) {
+            // for each network device
             Node node = swc.getNode();
+            // get stats about every nodeconnector from that node
             List<NodeConnectorStatistics> stat = statsManager
                 .getNodeConnectorStatistics(node);
 
             Map<NodeConnector, Data> node_data = new HashMap();
 
             for (NodeConnector nc : swc.getNodeConnectors()) {
+                // get node connector properties
                 Map<String,Property> mp =
                     switchManager.getNodeConnectorProps(nc);
 
                 Data data = new Data();
 
+                // update node connector entry
                 data.setNodeConnector(nc);
+                // update bandwidth entry
                 data.setBandwidth(mp.get(propertyName).getStringValue());
 
                 node_data.put(nc, data);
@@ -124,17 +131,21 @@ public class StatsCollectorImpl implements IStatsCollector, IObjectReader{
                 Data data = node_data.get(ncs.getNodeConnector());
 
                 if (data == null) {
-                    // statistics about switch<->controller
+                    // skip statistics about switch<->controller connection
                     continue;
                 }
 
                 long sent = ncs.getReceivePacketCount() + ncs.getTransmitPacketCount();
                 long drop = ncs.getReceiveDropCount() + ncs.getTransmitDropCount();
 
+                // update packet drop entry
                 data.setPacketDrop(drop);
+                // update packet sent entry
                 data.setPacketSent(sent);
 
+                // update transmit byte count entry
                 data.setTxCount(ncs.getTransmitByteCount());
+                // update receive byte count entry
                 data.setRxCount(ncs.getReceiveByteCount());
 
                 node_data.put(ncs.getNodeConnector(), data);
@@ -143,13 +154,12 @@ public class StatsCollectorImpl implements IStatsCollector, IObjectReader{
             List<Data> list_data = new ArrayList();
 
             for (NodeConnector key : node_data.keySet()) {
+                // move full stats info in a list
                 list_data.add(node_data.get(key));
             }
-
+            // update result map
             edge.put(node, list_data);
-
         }
-
         return edge;
     }
 
@@ -164,6 +174,7 @@ public class StatsCollectorImpl implements IStatsCollector, IObjectReader{
                     // get current statistics
                     Map<Node, List<Data> > res = getCurrentStatistics();
 
+                    // store current statistics in LRU cache
                     Cache.put(date.getTime(), res);
 
                 } catch (InterruptedException e) {
@@ -175,6 +186,8 @@ public class StatsCollectorImpl implements IStatsCollector, IObjectReader{
         }
     }
 
+    // implemented interface methods that allows other components to
+    // communicate with stats collector
     @Override
     public Map<Long, Map<Node, List<Data> > > getStats() {
         return new HashMap<Long, Map<Node, List<Data> > >(Cache);

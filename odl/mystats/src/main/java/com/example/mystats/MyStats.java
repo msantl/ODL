@@ -58,7 +58,6 @@ public class MyStats{
 
     void getFlowStatistics() {
         String containerName = "default";
-        String propertyName = "bandwidth";
 
         Map<Node, List<Data> > edge = new HashMap();
         Map<Long, Map<Node, List<Data> > > res;
@@ -70,14 +69,20 @@ public class MyStats{
             .getInstance(IStatsCollector.class, containerName, this);
 
         if (statsCollector != null) {
+            // if the statscollector bundle is present get the latest stats
             res = statsCollector.getStats();
 
+            Long latest = null;
             for (Long timestamp : res.keySet()) {
-                edge = res.get(timestamp);
-                System.out.println("Time: " + timestamp);
+                if (latest == null || timestamp > latest) {
+                    edge = res.get(timestamp);
+                    latest = timestamp;
+                }
             }
 
+            System.out.println("Time: " + latest);
         } else {
+            // do nothing if the stats collector bundle is not present
             System.out.println("StatsCollector not present!");
             return;
         }
@@ -86,9 +91,12 @@ public class MyStats{
         // get topology information
         Map<Node,Set<Edge>> topology = topologyManager.getNodeEdges();
 
+        // update neighbour information
         for (Node key : edge.keySet()) {
+            // for each node we get from stats collector
 
             for (Edge e : topology.get(key)) {
+                // get topology information about that node
 
                 NodeConnector tail_nc = e.getTailNodeConnector();
                 NodeConnector head_nc = e.getHeadNodeConnector();
@@ -96,20 +104,21 @@ public class MyStats{
                 Node tail = tail_nc.getNode();
                 Node head = head_nc.getNode();
 
-                // head -> tail
+                // save vertex(head -> tail)
                 List<Data> neighbours = edge.get(head);
                 for (Data n : neighbours) {
                     if (head_nc.equals(n.getNodeConnector())) {
                         n.setNode(tail);
                     }
                 }
-
             }
         }
 
         // update host info
         for (Node key : edge.keySet()) {
+            // for each node we get from stats collector
             for (Data n : edge.get(key)) {
+                // get topology information about hosts connected to switch
                 List<Host> hosts = topologyManager
                     .getHostsAttachedToNodeConnector(n.getNodeConnector());
 
@@ -119,7 +128,7 @@ public class MyStats{
             }
         }
 
-        // print info
+        // print collected information
         for (Node key : edge.keySet()) {
             System.out.println("Switch: " + key.toString());
 
@@ -146,6 +155,9 @@ public class MyStats{
                 System.out.println("");
             }
         }
+
+        /* TODO run A* on collected data */
+        /* TODO install a new flow using flowManager */
 
         return;
     }
