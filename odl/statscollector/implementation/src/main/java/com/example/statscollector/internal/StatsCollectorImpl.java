@@ -127,6 +127,7 @@ public class StatsCollectorImpl implements IStatsCollector, IObjectReader{
         for (Switch swc : switchManager.getNetworkDevices()) {
             /* dohvati statisticke podatke o njemu */
             Node node = swc.getNode();
+            // get stats about every nodeconnector from that node
             List<NodeConnectorStatistics> stat = statsManager
                 .getNodeConnectorStatistics(node);
 
@@ -141,7 +142,9 @@ public class StatsCollectorImpl implements IStatsCollector, IObjectReader{
                 /* spremi rezultat u strukturu podataka Data */
                 Data data = new Data();
 
+                // update node connector entry
                 data.setNodeConnector(nc);
+                // update bandwidth entry
                 data.setBandwidth(mp.get(propertyName).getStringValue());
 
                 node_data.put(nc, data);
@@ -161,10 +164,14 @@ public class StatsCollectorImpl implements IStatsCollector, IObjectReader{
                 long sent = ncs.getReceivePacketCount() + ncs.getTransmitPacketCount();
                 long drop = ncs.getReceiveDropCount() + ncs.getTransmitDropCount();
 
+                // update packet drop entry
                 data.setPacketDrop(drop);
+                // update packet sent entry
                 data.setPacketSent(sent);
 
+                // update transmit byte count entry
                 data.setTxCount(ncs.getTransmitByteCount());
+                // update receive byte count entry
                 data.setRxCount(ncs.getReceiveByteCount());
 
                 node_data.put(ncs.getNodeConnector(), data);
@@ -174,12 +181,12 @@ public class StatsCollectorImpl implements IStatsCollector, IObjectReader{
             List<Data> list_data = new ArrayList();
 
             for (NodeConnector key : node_data.keySet()) {
+                // move full stats info in a list
                 list_data.add(node_data.get(key));
             }
-
+            // update result map
             edge.put(node, list_data);
         }
-
         return edge;
     }
 

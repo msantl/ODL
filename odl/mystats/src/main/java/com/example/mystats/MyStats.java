@@ -92,10 +92,16 @@ public class MyStats{
             /* dohvati prikupljene podatke */
             res = statsCollector.getStats();
 
-            /* spremi lokalno samo jedan za potrebe ispisa*/
+            /* uzmi najnoviji podatak */
+            Long latest = null;
             for (Long timestamp : res.keySet()) {
-                edge = res.get(timestamp);
+                if (latest == null || timestamp > latest) {
+                    edge = res.get(timestamp);
+                    latest = timestamp;
+                }
             }
+
+            System.out.println("Time: " + latest);
         } else {
             /* ispisi pogresku i izadi */
             System.out.println("StatsCollector not present!");
@@ -109,6 +115,7 @@ public class MyStats{
         for (Node key : edge.keySet()) {
             /* za svakog neposrednog susjeda cvora*/
             for (Edge e : topology.get(key)) {
+                // get topology information about that node
 
                 /* dohvati podatke njihovoj povezanosti */
                 NodeConnector tail_nc = e.getTailNodeConnector();
@@ -124,7 +131,6 @@ public class MyStats{
                         n.setNode(tail);
                     }
                 }
-
             }
         }
 
@@ -170,6 +176,9 @@ public class MyStats{
                 System.out.println("");
             }
         }
+
+        /* TODO run A* on collected data */
+        /* TODO install a new flow using flowManager */
 
         return;
     }
