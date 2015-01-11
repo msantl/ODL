@@ -18,30 +18,39 @@ import org.opendaylight.controller.topologymanager.ITopologyManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/*
+ * MyStats
+ *  statisticke podatke koje prikuplja StatsCollector te ih nadopunjuje
+ *  podacima o topologiji mreze
+ */
 public class MyStats{
+    /* log - za spremanje bitnih dogadaja u datoteku s izvjestajem */
     private static final Logger log = LoggerFactory.getLogger(MyStats.class);
-    private IStatsCollector statsCollector;
 
-    public MyStats() {
-    }
+    public MyStats() { }
 
+    /* init - metoda koja se poziva nakon ucitavanja modula u OSGi radni okvir*/
     void init() {
         log.debug("INIT called!");
     }
 
+    /* destroy - metoda koja se poziva nakon micanja modula iz OSGi radnog okvira */
     void destroy() {
         log.debug("DESTROY called!");
     }
 
+    /* start - metoda koja se poziva nakon pokretanja modula u OSGi radnom okviru*/
     void start() {
         log.debug("START called!");
         getFlowStatistics();
     }
 
+    /* stop - metoda koja se poziva nakon zaustavljanja modula u OSGi radnom okviru*/
     void stop() {
         log.debug("STOP called!");
     }
 
+    /* pomocna metoda koja ispisuje sadrzaj Mape bez obzira na tipove podataka */
     void printMap(Map mp) {
         Iterator it = mp.entrySet().iterator();
         System.out.println("--------------------");
@@ -56,48 +65,59 @@ public class MyStats{
         System.out.println("--------------------");
     }
 
+    /* getFlowStatistics - glavna metoda ove klase. Koristi sucelje klase
+     * StatsCollector kako bi dohvatila prikupljene podatke. Nakon toga te
+     * podatke nadopunjuje informacijama o topologiji mreze. */
     void getFlowStatistics() {
+        /* naziv grupe OF komutatora */
         String containerName = "default";
-        String propertyName = "bandwidth";
 
+        /* struktura podataka u koju spremamo sve podatke */
         Map<Node, List<Data> > edge = new HashMap();
+        /* struktura podataka u koju spremamo statisticke podatke */
         Map<Long, Map<Node, List<Data> > > res;
 
-
+        /* dohvacamo instancu klase TopologyManager koja pruza sucelje za
+         * dohvacanje trenutne topologije mreze */
         ITopologyManager topologyManager = (ITopologyManager) ServiceHelper
             .getInstance(ITopologyManager.class, containerName, this);
 
+        /* dohvacamo instancu klase StatsCollector koja pruza sucelje za
+         * dohvacanje prikupljenih statistickih podataka */
         IStatsCollector statsCollector = (IStatsCollector) ServiceHelper
             .getInstance(IStatsCollector.class, containerName, this);
 
+        /* provjeri da je StatsCollector pokrenut*/
         if (statsCollector != null) {
+            /* dohvati prikupljene podatke */
             res = statsCollector.getStats();
 
+            /* spremi lokalno samo jedan za potrebe ispisa*/
             for (Long timestamp : res.keySet()) {
                 edge = res.get(timestamp);
-                System.out.println("Time: " + timestamp);
             }
-
         } else {
+            /* ispisi pogresku i izadi */
             System.out.println("StatsCollector not present!");
             return;
         }
 
-
-        // get topology information
+        /* dohvati trenutnu topologiju mreze */
         Map<Node,Set<Edge>> topology = topologyManager.getNodeEdges();
 
+        /* za svaki cvor za koji imamo prikupljene statisticke podatke */
         for (Node key : edge.keySet()) {
-
+            /* za svakog neposrednog susjeda cvora*/
             for (Edge e : topology.get(key)) {
 
+                /* dohvati podatke njihovoj povezanosti */
                 NodeConnector tail_nc = e.getTailNodeConnector();
                 NodeConnector head_nc = e.getHeadNodeConnector();
 
                 Node tail = tail_nc.getNode();
                 Node head = head_nc.getNode();
 
-                // head -> tail
+                /* osvjezi strukturu podataka s informacijom o poveznasnoti */
                 List<Data> neighbours = edge.get(head);
                 for (Data n : neighbours) {
                     if (head_nc.equals(n.getNodeConnector())) {
@@ -108,19 +128,22 @@ public class MyStats{
             }
         }
 
-        // update host info
+        /* za svaki cvor za koji imamo prikupljene statisticke podatke */
         for (Node key : edge.keySet()) {
+            /* za svaki zapis koji imamo za taj covr */
             for (Data n : edge.get(key)) {
+                /* dohvati listu hostova koji su spojeni na neki od portova */
                 List<Host> hosts = topologyManager
                     .getHostsAttachedToNodeConnector(n.getNodeConnector());
 
+                /* osvjezi strukturu podataka s informacijom o hostovima */
                 if (hosts != null) {
                     n.setHosts(hosts);
                 }
             }
         }
 
-        // print info
+        /* ispisi prikupljene informacije */
         for (Node key : edge.keySet()) {
             System.out.println("Switch: " + key.toString());
 

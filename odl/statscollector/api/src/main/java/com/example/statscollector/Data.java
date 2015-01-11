@@ -7,14 +7,24 @@ import org.opendaylight.controller.sal.core.Node;
 import org.opendaylight.controller.sal.core.NodeConnector;
 import org.opendaylight.controller.sal.core.Host;
 
+/* Data - struktura podataka koja je namijenjena za spremanje i dohvat
+ * statistickih podataka te podataka o topologiji mreze. */
 public class Data {
+    /* node - oznaka susjednog cvora */
     private Node node;
+    /* host - lista hostova spojenih na cvor */
     private List<Host> host;
+    /* nc - oznaka porta na kojem je ostvarena veza */
     private NodeConnector nc;
+    /* pkt_drop - broj izgubljenih paketa */
     private long pkt_drop;
+    /* pkt_sent - broj poslanih paketa */
     private long pkt_sent;
+    /* tx_count - broj poslanih okteta */
     private long tx_count;
+    /* rx_count - broj primljenih okteta */
     private long rx_count;
+    /* bandwidth - nazivna vrijednost propusnosti */
     private String bandwidth;
 
     public Data() {

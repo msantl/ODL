@@ -8,14 +8,11 @@ import org.slf4j.LoggerFactory;
 import com.example.statscollector.IStatsCollector;
 
 public class Activator extends ComponentActivatorAbstractBase {
-    protected static final Logger logger = LoggerFactory
-            .getLogger(Activator.class);
+    protected static final Logger logger = LoggerFactory.getLogger(Activator.class);
 
-    public void init() {
-    }
+    public void init() { }
 
-    public void destroy() {
-    }
+    public void destroy() { }
 
     public Object[] getImplementations() {
         Object[] res = { StatsCollectorImpl.class };
@@ -24,9 +21,7 @@ public class Activator extends ComponentActivatorAbstractBase {
 
     public void configureInstance(Component c, Object imp, String containerName) {
         if (imp.equals(StatsCollectorImpl.class)) {
-            // export the service
             c.setInterface(new String[] { IStatsCollector.class.getName() }, null);
-
         }
     }
 }
