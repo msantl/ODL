@@ -31,16 +31,19 @@ import org.opendaylight.controller.sal.action.Output;
 import org.opendaylight.controller.sal.match.Match;
 import org.opendaylight.controller.sal.match.MatchType;
 
+import org.opendaylight.controller.sal.packet.IListenDataPacket;
+import org.opendaylight.controller.sal.packet.PacketResult;
+import org.opendaylight.controller.sal.packet.RawPacket;
+
 import org.opendaylight.controller.forwardingrulesmanager.IForwardingRulesManager;
 import org.opendaylight.controller.forwardingrulesmanager.FlowEntry;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class MyStats{
+public class MyStats implements IListenDataPacket {
     public final String sourceIP = "10.0.0.1";
     public final String destinationIP = "10.0.0.2";
-
     public final short PRIORITY = 1;
 
     public static class Vertex implements Comparable<Vertex> {
@@ -75,6 +78,21 @@ public class MyStats{
                 return -1;
             }
         }
+    }
+
+    public static class Path {
+        public final Node n1;
+        public final Node n2;
+        public final NodeConnector n1n2;
+        public final NodeConnector n2n1;
+
+        public Path(Node in, Node out, NodeConnector in2out, NodeConnector out2in) {
+            this.n1 = in;
+            this.n2 = out;
+            this.n1n2 = in2out;
+            this.n2n1 = out2in;
+        }
+
     }
 
     private static final Logger log = LoggerFactory.getLogger(MyStats.class);
@@ -116,7 +134,9 @@ public class MyStats{
 
     void installFlow(IForwardingRulesManager rulesManger,
             Node node,
-            NodeConnector nodeConnector) {
+            NodeConnector nodeConnector,
+            InetAddress src,
+            InetAddress dst) {
 
         System.out.print("Installing new flow on: " + node.toString() + " " +
                 nodeConnector.getNodeConnectorIdAsString());
@@ -129,16 +149,20 @@ public class MyStats{
         /* match IPv4 ethernet packets with matching IP addresses*/
         try {
             match.setField(MatchType.DL_TYPE, EtherTypes.IPv4.shortValue());
-            match.setField(MatchType.NW_DST, InetAddress.getByName(destinationIP));
-            match.setField(MatchType.NW_SRC, InetAddress.getByName(sourceIP));
+            match.setField(MatchType.NW_DST, dst);
+            match.setField(MatchType.NW_SRC, src);
         } catch (Exception e) {
             System.out.println("Exception: " + e.toString());
         }
 
         Flow flow = new Flow(match, actions);
         flow.setPriority(PRIORITY);
-        FlowEntry flowEntry = new FlowEntry("GroupName", "FlowName", flow, node);
 
+        String policyName = src.getHostAddress() + "/" + dst.getHostAddress();
+        String flowName = "[" + node.toString() + "] " + policyName;
+
+        FlowEntry flowEntry = new FlowEntry(policyName, "MyStatsFlow", flow, node);
+/*
         Status s = rulesManger.installFlowEntry(flowEntry);
 
         if (s.isSuccess()) {
@@ -146,7 +170,7 @@ public class MyStats{
         } else {
             System.out.println(" ... failed");
         }
-
+*/
         return;
     }
 
@@ -253,19 +277,28 @@ public class MyStats{
         }
 
         /* run dijkstra on collected data */
+        InetAddress source, destination;
+        try {
+            destination = InetAddress.getByName(destinationIP);
+            source = InetAddress.getByName(sourceIP);
+        } catch (Exception e) {
+            System.out.println("IP addresses are not valid!" + e.toString());
+            return;
+        }
+
         System.out.println("Computing the shortest path between h1 and h2");
 
+        /* find switches that are connected to hosts */
         Node startingNode = null, endingNode = null;
-
         for (Node key : leafs.keySet()) {
             if (leafs.get(key) == null) continue;
 
             for (Host host : leafs.get(key)) {
-                if (host.getNetworkAddressAsString().equals(sourceIP)) {
+                if (host.getNetworkAddress().equals(source)) {
                     startingNode = key;
                 }
 
-                if (host.getNetworkAddressAsString().equals(destinationIP)) {
+                if (host.getNetworkAddress().equals(destination)) {
                     endingNode = key;
                 }
             }
@@ -279,7 +312,7 @@ public class MyStats{
                                ", end = " + endingNode.toString());
         }
 
-        // dijkstra
+        /* dijkstra */
         NavigableSet<Vertex> q = new TreeSet<Vertex>();
         Map<Node, Long> distance = new HashMap<Node, Long>();
 
@@ -297,96 +330,155 @@ public class MyStats{
             }
 
             for (Data d : edge.get(u.node)) {
-                long oldPath = Long.MAX_VALUE;
-                long newPath = u.dist + 1L;
+                long oldPathCost = Long.MAX_VALUE;
+                long newPathCost = u.dist + 1L;
 
                 if (distance.get(d.getNode()) != null) {
-                    oldPath = distance.get(d.getNode());
+                    oldPathCost = distance.get(d.getNode());
                 }
 
-                if (newPath < oldPath) {
-                    v = new Vertex(d.getNode(), newPath);
+                if (newPathCost < oldPathCost) {
+                    v = new Vertex(d.getNode(), newPathCost);
                     v.prev = u;
-                    distance.put(d.getNode(), newPath);
+                    distance.put(d.getNode(), newPathCost);
 
                     q.add(v);
                 }
             }
         }
 
-        /* TODO install a new flow */
-        if (u != null) {
-            u.printPath();  System.out.println("");
-
-            /* delete all flows on nodes */
-            v = u;
-            while (v != null) {
-                List<FlowEntry> flows = rulesManger
-                    .getFlowEntriesForNode(v.node);
-
-                if (flows != null) {
-                    for (FlowEntry flow : flows) {
-                        System.out.print("Uninstalling flow");
-
-                        Status s = rulesManger.uninstallFlowEntry(flow);
-
-                        if (s.isSuccess()) {
-                            System.out.println(" ... ok");
-                        } else {
-                            System.out.println(" ... failed");
-                        }
-                    }
-                }
-
-                v = v.prev;
-            }
-
-            /* handle last switch separately */
-            Node node = u.node;
-            NodeConnector nodeConnector = null;
-
-            for (Data d : edge.get(node)) {
-                if (d.getHosts() == null) continue;
-                for (Host h : d.getHosts()) {
-                    if (destinationIP.equals(h.getNetworkAddressAsString())) {
-                        nodeConnector = d.getNodeConnector();
-                    }
-                }
-            }
-
-            if (nodeConnector != null) {
-                installFlow(rulesManger, node, nodeConnector);
-            }
-
-            while (u.prev != null) {
-                node = u.node;
-                u = u.prev;
-
-                Node key = u.node;
-                nodeConnector = null;
-
-                for (Data d : edge.get(key)) {
-                    if (d.getNode() == null) continue;
-                    if (d.getNode().equals(node)) {
-                        nodeConnector = d.getNodeConnector();
-                    }
-                }
-
-                if (nodeConnector == null) {
-                    System.out.println("An error occured while searching for node connector!");
-                    return;
-                }
-
-                installFlow(rulesManger, key, nodeConnector);
-            }
-
-        } else {
+        /* install new flows */
+        if (u == null) {
             System.out.println("Couldn't find a path!");
             return;
         }
 
+        List<Path> path = new ArrayList<Path>();
 
+        while (u.prev != null) {
+            Node n1 = u.node;
+            Node n2 = u.prev.node;
+
+            NodeConnector n1n2 = null, n2n1 = null;
+
+            for (Data d: edge.get(n1)) {
+                if (d.getNodeConnector() != null &&
+                    d.getNode() != null &&
+                    n2.equals(d.getNode())) {
+
+                    n1n2 = d.getNodeConnector();
+                    break;
+                }
+            }
+
+            for (Data d: edge.get(n2)) {
+                if (d.getNodeConnector() != null &&
+                    d.getNode() != null &&
+                    n1.equals(d.getNode())) {
+
+                    n2n1 = d.getNodeConnector();
+                    break;
+                }
+            }
+
+            if (n1n2 == null || n2n1 == null) {
+                System.out.println("NodeConnector not found!");
+                continue;
+            }
+
+            path.add(new Path(n1, n2, n1n2, n2n1));
+
+            u = u.prev;
+        }
+
+        /* path is now a list of pairs (n1, n2) -> (n2, n3) -> ... */
+
+        for (Path p: path) {
+            List<FlowEntry> flows;
+
+            /* delete existing flow for n1 */
+            flows = rulesManger.getFlowEntriesForNode(p.n1);
+            if (flows != null) {
+                for (FlowEntry flow: flows) {
+                    System.out.print("Uninstalling flow for " + p.n1.toString());
+
+                    Status s = rulesManger.uninstallFlowEntry(flow);
+
+                    if (s.isSuccess()) {
+                        System.out.println(" ... ok");
+                    } else {
+                        System.out.println(" ... failed");
+                    }
+                }
+            }
+
+            /* delete existing flow for n2 */
+            flows = rulesManger.getFlowEntriesForNode(p.n2);
+            if (flows != null) {
+                for (FlowEntry flow: flows) {
+                    System.out.print("Uninstalling flow for " + p.n2.toString());
+
+                    Status s = rulesManger.uninstallFlowEntry(flow);
+
+                    if (s.isSuccess()) {
+                        System.out.println(" ... ok");
+                    } else {
+                        System.out.println(" ... failed");
+                    }
+                }
+            }
+        }
+
+        for (Path p: path) {
+            /* install new flow for n1-n2 and n2-n1 */
+            installFlow(rulesManger, p.n1, p.n1n2, destination, source);
+            installFlow(rulesManger, p.n2, p.n2n1, source, destination);
+
+            /* check if n2 is source */
+            if (p.n2.equals(startingNode)) {
+                NodeConnector n2h = null;
+
+                for (Data d: edge.get(p.n2)) {
+                    if (d.getHosts() != null) {
+                        for (Host h: d.getHosts()) {
+                            if (source.equals(h.getNetworkAddress())) {
+                                n2h = d.getNodeConnector();
+                            }
+                        }
+                    }
+                }
+
+                if (n2h != null) {
+                    installFlow(rulesManger, p.n2, n2h, destination, source);
+                }
+            }
+
+            /* check if n1 is destination */
+            if (p.n1.equals(endingNode)) {
+                NodeConnector n1h = null;
+
+                for (Data d: edge.get(p.n1)) {
+                    if (d.getHosts() != null) {
+                        for (Host h: d.getHosts()) {
+                            if (destination.equals(h.getNetworkAddress())) {
+                                n1h = d.getNodeConnector();
+                            }
+                        }
+                    }
+                }
+
+                if (n1h != null) {
+                    installFlow(rulesManger, p.n1, n1h, source, destination);
+                }
+            }
+        }
 
         return;
+    }
+
+    @Override
+    public PacketResult receiveDataPacket(RawPacket inPkt) {
+        System.out.println("Dobio sam novi paket!");
+        return PacketResult.IGNORED;
     }
 }

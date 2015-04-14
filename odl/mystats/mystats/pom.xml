@@ -57,6 +57,7 @@
                             org.opendaylight.controller.sal.flowprogrammer,
                             org.opendaylight.controller.sal.match,
                             org.opendaylight.controller.sal.action,
+                            org.opendaylight.controller.sal.packet,
                             org.slf4j,
                             org.apache.felix.dm,
                             com.example.statscollector</Import-Package>
