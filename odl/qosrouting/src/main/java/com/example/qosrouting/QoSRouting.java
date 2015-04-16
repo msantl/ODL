@@ -5,14 +5,9 @@ import java.net.InetAddress;
 import java.util.List;
 import java.util.ArrayList;
 
-import java.util.PriorityQueue;
-
-import java.util.Collections;
-
 import java.util.Set;
 
 import java.util.Map;
-import java.util.HashMap;
 
 import org.opendaylight.controller.forwardingrulesmanager.IForwardingRulesManager;
 import org.opendaylight.controller.sal.packet.IDataPacketService;
@@ -25,11 +20,11 @@ import org.opendaylight.controller.switchmanager.Switch;
 import org.opendaylight.controller.sal.utils.Status;
 import org.opendaylight.controller.sal.utils.NetUtils;
 
+import org.opendaylight.controller.sal.core.Edge;
 import org.opendaylight.controller.sal.core.Node;
 import org.opendaylight.controller.sal.core.NodeConnector;
 
 import org.opendaylight.controller.hosttracker.hostAware.HostNodeConnector;
-import org.opendaylight.controller.sal.core.Edge;
 
 import org.opendaylight.controller.sal.utils.EtherTypes;
 import org.opendaylight.controller.sal.flowprogrammer.Flow;
@@ -118,6 +113,8 @@ public class QoSRouting implements IListenDataPacket {
 
     void init() {
         log.debug("INIT called!");
+
+        /* remove all existing flows*/
         clearAllFlows();
     }
 
@@ -185,7 +182,7 @@ public class QoSRouting implements IListenDataPacket {
         return;
     }
 
-    void installFlow(Node node, NodeConnector nodeConnector, 
+    void installFlow(Node node, NodeConnector nodeConnector,
                      InetAddress src, InetAddress dst) {
 
         System.out.print("Installing new flow on: " + node.toString() + " " +
@@ -224,120 +221,18 @@ public class QoSRouting implements IListenDataPacket {
         return;
     }
 
-    private static class myVertex implements Comparable<myVertex> {
-        public final Node node;
-        public List<myEdge> adj;
-
-        public double distance = Double.POSITIVE_INFINITY;
-        public myVertex prev = null;
-
-        public myVertex(Node node) {
-            this.node = node;
-            adj = new ArrayList<myEdge>();
-        }
-
-        public int compareTo(myVertex other) {
-            return Double.compare(distance, other.distance);
-        }
-    }
-
-    private static class myEdge {
-        public final myVertex target;
-        public final double cost;
-
-        public myEdge(myVertex target, double cost) {
-            this.target = target;
-            this.cost = cost;
-        }
-    }
-
-    List<Node> reconstructPath(myVertex v) {
-        List<Node> path = new ArrayList<Node>();
-
-        for (myVertex u = v; u != null; u = u.prev) {
-            path.add(u.node);
-        }
-        Collections.reverse(path);
-
-        return path;
-    }
-
-    List<Edge> Dijkstra(Node source, Node goal) {
-        Map<Node, Set<Edge> > edges = this.topologyManager.getNodeEdges();
-        Map<Node, myVertex> node2vertex = new HashMap<Node, myVertex>();
-
-        /* prepare data structures for dijkstra */
-        for (Node n: edges.keySet()) {
-            node2vertex.put(n, new myVertex(n));
-        }
-
-        for (Node n: edges.keySet()) {
-            for (Edge e: edges.get(n)) {
-                myVertex u, v;
-
-                u = node2vertex.get(e.getTailNodeConnector().getNode());
-                v = node2vertex.get(e.getHeadNodeConnector().getNode());
-
-                u.adj.add(new myEdge(v, 1.0));
-            }
-        }
-
-        PriorityQueue<myVertex> q = new PriorityQueue<myVertex>();
-        myVertex start = node2vertex.get(source);
-        start.distance = 0.0;
-
-        q.add(start);
-
-        while (!q.isEmpty()) {
-            myVertex u = q.poll();
-
-            if (goal.equals(u.node)) {
-                /* reconstruct the path */
-                System.out.println("Path found!");
-
-                List<Node> path = reconstructPath(u);
-                List<Edge> ret = new ArrayList<Edge>();
-
-                for (int i = 0; i < path.size() - 1; ++i) {
-                    Node head = path.get(i);
-                    Node tail = path.get(i + 1);
-
-                    for (Edge e: edges.get(head)) {
-                        if (tail.equals(e.getTailNodeConnector().getNode())) {
-                            ret.add(e);
-                            break;
-                        }
-                    }
-                }
-                return ret;
-            }
-
-            for (myEdge e: u.adj) {
-                myVertex v = e.target;
-
-                if (u.distance + e.cost < v.distance) {
-                    q.remove(v);
-                    v.distance = u.distance + e.cost;
-                    v.prev = u;
-                    q.add(v);
-                }
-            }
-        }
-
-        System.out.println("Path not found!");
-        return null;
-    }
-
     @Override
     public PacketResult receiveDataPacket(RawPacket inPkt) {
         /* extract IP addresses from packet data */
         Packet formattedPak = this.dataPacketService.decodeDataPacket(inPkt);
         InetAddress source = null, destination = null;
+        IPv4 ipPak = null;
 
         if (formattedPak instanceof Ethernet) {
             Object nextPak = formattedPak.getPayload();
             if (nextPak instanceof IPv4) {
-                IPv4 ipPak = (IPv4)nextPak;
+                ipPak = (IPv4)nextPak;
+
                 source = NetUtils
                     .getInetAddress(ipPak.getSourceAddress());
                 destination = NetUtils
@@ -360,7 +255,7 @@ public class QoSRouting implements IListenDataPacket {
             srcHost = hostManager.hostFind(source);
 
             try{
-                Thread.sleep(10);
+                Thread.sleep(100);
             } catch(Exception e) {
                 System.out.println(e.toString());
 
@@ -376,7 +271,7 @@ public class QoSRouting implements IListenDataPacket {
             dstHost = hostManager.hostFind(destination);
 
             try{
-                Thread.sleep(10);
+                Thread.sleep(100);
             } catch(Exception e) {
                 System.out.println(e.toString());
             }
@@ -386,16 +281,17 @@ public class QoSRouting implements IListenDataPacket {
         } while(dstHost == null);
         System.out.println("done");
 
-        /* get the current topology */
-
-        /* compute the shortest path */
+        /* get the starting point */
         NodeConnector srcNodeConnector = srcHost.getnodeConnector();
         Node srcNode = srcHost.getnodeconnectorNode();
 
+        /* get the ending point */
         NodeConnector dstNodeConnector = dstHost.getnodeConnector();
         Node dstNode = dstHost.getnodeconnectorNode();
 
-        List<Edge> path = Dijkstra(srcNode, dstNode);
+        Map<Node, Set<Edge> > edges = this.topologyManager.getNodeEdges();
+        /* compute the shortest path */
+        List<Edge> path = Dijkstra.getPath(srcNode, dstNode, edges);
 
         /* set flow for source */
         installFlow(srcNode, srcNodeConnector, destination, source);
@@ -413,8 +309,13 @@ public class QoSRouting implements IListenDataPacket {
         }
 
         /* send the first packet manually */
-        inPkt.setOutgoingNodeConnector(dstNodeConnector);
-        this.dataPacketService.transmitDataPacket(inPkt);
+        System.out.println("Sending packet to: " + dstNodeConnector.toString());
+
+        RawPacket rp = this.dataPacketService
+            .encodeDataPacket(ipPak.getParent());
+
+        rp.setOutgoingNodeConnector(dstNodeConnector);
+        this.dataPacketService.transmitDataPacket(rp);
 
         return PacketResult.CONSUME;
     }

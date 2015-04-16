@@ -1,9 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<checkstyle version="5.6">
-<file name="/home/msantl/Desktop/diplomski/controller/opendaylight/qosrouting/pom.xml">
-</file>
-<file name="/home/msantl/Desktop/diplomski/controller/opendaylight/qosrouting/src/main/java/com/example/qosrouting/QoSRouting.java">
-</file>
-<file name="/home/msantl/Desktop/diplomski/controller/opendaylight/qosrouting/src/main/java/com/example/qosrouting/Activator.java">
-</file>
-</checkstyle>

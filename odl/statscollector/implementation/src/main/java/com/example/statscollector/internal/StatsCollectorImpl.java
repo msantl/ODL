@@ -31,25 +31,17 @@ import org.opendaylight.controller.switchmanager.Switch;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/* StatsCollectorImpl - ostvarenje sucelja IStatsCollector. StatsCollectorImpl
- * pokrece dretvu koja svake dvije sekunde sprema statisticke podatke koje
- * dohvaca od upravljackog uredaja preko sucelja IStatisticsManager u lokalni
- * LRU cache od 1000 zapisa. Implementira metodu getStats koju onda mogu
- * pozivati drugi paketi unutar OpenDaylight-a kako bi dohvatili te podatke */
 public class StatsCollectorImpl implements IStatsCollector, IObjectReader{
-    /* log - za spremanje bitnih dogadaja u datoteku s izvjestajem */
     private static final Logger log = LoggerFactory.getLogger(StatsCollectorImpl.class);
-    /* statsCollector - dretva koja je zaduzena za periodicki dohvat
-     * statistickih podataka od upravljckog uredaja*/
     private Thread statsCollector;
-    /* Cache - lokalni LRU cache */
     private final Map<Long, Map<Node, List<Data> > > Cache = Collections
         .synchronizedMap(new LRUCache<Long, Map<Node, List<Data> > >(1000));
 
-    /* LRUCache - ostvarenje LRU prirucne memorije */
+    // LRU cache class used to store limited data about stats
     private class LRUCache <K, V> extends LinkedHashMap <K, V> {
-        /* capacity - kapacitet prirucne memorije */
+
         private final int capacity;
+
         public LRUCache(int capacity) {
             super(capacity+1, 1.0f, true);
             this.capacity = capacity;
@@ -59,9 +51,9 @@ public class StatsCollectorImpl implements IStatsCollector, IObjectReader{
         protected boolean removeEldestEntry(final Map.Entry<K, V> eldest) {
             return (super.size() > this.capacity);
         }
+
     }
 
-    /* pomocna metoda koja ispisuje sadrzaj Mape bez obzira na tipove podataka */
     void printMap(Map mp) {
         Iterator it = mp.entrySet().iterator();
         System.out.println("--------------------");
@@ -72,60 +64,47 @@ public class StatsCollectorImpl implements IStatsCollector, IObjectReader{
         System.out.println("--------------------");
     }
 
-    public StatsCollectorImpl() {}
+    public StatsCollectorImpl() {
+    }
 
-    /* init - metoda koja se poziva nakon ucitavanja modula u OSGi radni okvir*/
     void init() {
         log.debug("INIT called!");
-        /* inicijaliziraj dretvu statsCollector */
+        // init thread
         statsCollector = new Thread(new StatsCollectorThread());
     }
 
-    /* destroy - metoda koja se poziva nakon micanja modula iz OSGi radnog okvira */
     void destroy() {
         log.debug("DESTROY called!");
     }
 
-    /* start - metoda koja se poziva nakon pokretanja modula u OSGi radnom okviru*/
     void start() {
         log.debug("START called!");
-        /* pokreni dretvu statsCollector */
+        // start the thread
         statsCollector.start();
     }
 
-    /* stop - metoda koja se poziva nakon zaustavljanja modula u OSGi radnom okviru*/
     void stop() {
         log.debug("STOP called!");
-        /* zaustavi dretvu statsCollector */
+        // stop the thread
         statsCollector.interrupt();
     }
 
-    /* getCurrentStatistics - glavna metoda ove klase. Koristi se za dohvat
-     * trenutnih statistickih podataka od upravljackog uredaja. Koristi sucelje
-     * klasa StatsManager i SwitchManager kako bi prikupila podatke oko
-     * postojecih cvorova i njihovih brojaca */
     Map<Node, List<Data> > getCurrentStatistics() {
-        /* naziv grupe OF komutatora */
         String containerName = "default";
-        /* naziv polja u kojem je spremljen podatak o propusnosti*/
+        // key for the property map that contains the bandwodth information
         String propertyName = "bandwidth";
 
-        /* struktura podataka u koju spremamo rezultat */
         Map<Node, List<Data> > edge = new HashMap();
 
-        /* dohvacamo instancu klase StatisticsManager koja pruza sucelje za
-         * dohvat statistickih podataka */
         IStatisticsManager statsManager = (IStatisticsManager) ServiceHelper
             .getInstance(IStatisticsManager.class, containerName, this);
 
-        /* dohvacamo instancu klase SwitchManager  koja pruza sucelje za dohvat
-         * informacija o postojecim komutatorima */
         ISwitchManager switchManager = (ISwitchManager) ServiceHelper
             .getInstance(ISwitchManager.class, containerName, this);
 
-        /* za svaki komutator u mrezi */
+        // get statistics and bandwidth property
         for (Switch swc : switchManager.getNetworkDevices()) {
-            /* dohvati statisticke podatke o njemu */
+            // for each network device
             Node node = swc.getNode();
             // get stats about every nodeconnector from that node
             List<NodeConnectorStatistics> stat = statsManager
@@ -133,13 +112,11 @@ public class StatsCollectorImpl implements IStatsCollector, IObjectReader{
 
             Map<NodeConnector, Data> node_data = new HashMap();
 
-            /* za svaki port mreznog komutatora */
             for (NodeConnector nc : swc.getNodeConnectors()) {
-                /* dohvati podatke o nazivnim vrijednostima */
+                // get node connector properties
                 Map<String,Property> mp =
                     switchManager.getNodeConnectorProps(nc);
 
-                /* spremi rezultat u strukturu podataka Data */
                 Data data = new Data();
 
                 // update node connector entry
@@ -150,17 +127,14 @@ public class StatsCollectorImpl implements IStatsCollector, IObjectReader{
                 node_data.put(nc, data);
             }
 
-            /* za svaki port i pripadajuce statisticke podatke */
             for (NodeConnectorStatistics ncs : stat) {
-                /* dohvati postojeci zapis */
                 Data data = node_data.get(ncs.getNodeConnector());
 
                 if (data == null) {
-                    /* ignoriraj port na kojem je upravljacki uredaj */
+                    // skip statistics about switch<->controller connection
                     continue;
                 }
 
-                /* dohvati i spremi statisticke podatke */
                 long sent = ncs.getReceivePacketCount() + ncs.getTransmitPacketCount();
                 long drop = ncs.getReceiveDropCount() + ncs.getTransmitDropCount();
 
@@ -177,7 +151,6 @@ public class StatsCollectorImpl implements IStatsCollector, IObjectReader{
                 node_data.put(ncs.getNodeConnector(), data);
             }
 
-            /* pohrani prikupljene podatke o mreznom komutatoru u rezultat */
             List<Data> list_data = new ArrayList();
 
             for (NodeConnector key : node_data.keySet()) {
@@ -190,20 +163,21 @@ public class StatsCollectorImpl implements IStatsCollector, IObjectReader{
         return edge;
     }
 
-    /* StatsCollectorThread - dretva zaduzena za periodicko prikupljanje
-     * statistickih podataka */
     private class StatsCollectorThread implements Runnable {
         @Override
         public void run() {
             while (true) {
                 try {
                     Thread.sleep(2000);
-                    /* dohvati trenutnu vremensku oznaku */
+                    // get current time
                     Date date = new java.util.Date();
-                    /* dohvati statisticke podatke */
+
+                    // get current statistics
                     Map<Node, List<Data> > res = getCurrentStatistics();
-                    /* pohrani rezultat u prirucnu memoriju */
+
+                    // store current statistics in LRU cache
                     Cache.put(date.getTime(), res);
+
                 } catch (InterruptedException e) {
                     break;
                 } catch (Exception e) {
@@ -213,13 +187,29 @@ public class StatsCollectorImpl implements IStatsCollector, IObjectReader{
         }
     }
 
-    /* getStats - sucelje za dohvat statistickih podataka */
+    // implemented interface methods that allows other components to
+    // communicate with stats collector
     @Override
     public Map<Long, Map<Node, List<Data> > > getStats() {
         return new HashMap<Long, Map<Node, List<Data> > >(Cache);
     }
 
-    /* getTest - sucelje za ispitivanje ispravnosti */
+    @Override
+    public Map<Node, List<Data> > getLatestStats() {
+        Map<Long, Map<Node, List<Data> > > stats = new HashMap<Long, Map<Node, List<Data> > >(Cache);
+        Map<Node, List<Data> > ret = null;
+        Long timestamp = null;
+
+        for (Long time: stats.keySet()) {
+            if (timestamp == null || time > timestamp) {
+                timestamp = time;
+                ret = stats.get(time);
+            }
+        }
+
+        return ret;
+    }
+
     @Override
     public List<String> getTest() {
         List<String> ret = new ArrayList();
@@ -231,8 +221,6 @@ public class StatsCollectorImpl implements IStatsCollector, IObjectReader{
         return ret;
     }
 
-    /* readObject - sucelje koje omogucuje prijenost podataka prema drugima
-     * klasama */
     @Override
     public Object readObject(ObjectInputStream ois)
         throws FileNotFoundException, IOException, ClassNotFoundException {
