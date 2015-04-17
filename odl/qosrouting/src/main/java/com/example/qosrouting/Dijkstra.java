@@ -11,6 +11,9 @@ import java.util.Collections;
 import org.opendaylight.controller.sal.core.Edge;
 import org.opendaylight.controller.sal.core.Node;
 
+import org.opendaylight.controller.statisticsmanager.IStatisticsManager;
+import org.opendaylight.controller.sal.reader.NodeConnectorStatistics;
+
 public final class Dijkstra {
     private static class myVertex implements Comparable<myVertex> {
         public final Node node;
@@ -50,22 +53,12 @@ public final class Dijkstra {
         return path;
     }
 
-    public static List<Edge> getPath(Node source, Node goal,
+    public static List<Edge> getPathHopByHop(Node source, Node goal,
             Map<Node, Set<Edge> > edges) {
-        long start = System.nanoTime();
-        List<Edge> ret = getPathInternal(source, goal, edges);
-        long end = System.nanoTime();
-
-        System.out.println("Time elapsed: " + ((end - start) / 1000.) + "us");
-        return ret;
-    }
-
-    private static List<Edge> getPathInternal(Node source, Node goal,
-            Map<Node, Set<Edge> > edges) {
-
+        long start_time = System.nanoTime();
+        /* prepare data structures for dijkstra */
         Map<Node, myVertex> node2vertex = new HashMap<Node, myVertex>();
 
-        /* prepare data structures for dijkstra */
         for (Node n: edges.keySet()) {
             node2vertex.put(n, new myVertex(n));
         }
@@ -80,19 +73,72 @@ public final class Dijkstra {
                 u.adj.add(new myEdge(v, 1.0));
             }
         }
-
-        PriorityQueue<myVertex> q = new PriorityQueue<myVertex>();
         myVertex start = node2vertex.get(source);
         start.distance = 0.0;
 
+        myVertex end = node2vertex.get(goal);
+
+        List<Edge> ret = getPathInternal(start, end, edges);
+        long end_time = System.nanoTime();
+
+        System.out.println("Time elapsed: " + ((end_time - start_time) / 1000.) + " us");
+        return ret;
+    }
+
+    public static List<Edge> getPathVideo(Node source, Node goal,
+            Map<Node, Set<Edge> > edges, IStatisticsManager statsManager) {
+
+        long start_time = System.nanoTime();
+        /* prepare data structures for dijkstra */
+        Map<Node, myVertex> node2vertex = new HashMap<Node, myVertex>();
+
+        for (Node n: edges.keySet()) {
+            node2vertex.put(n, new myVertex(n));
+        }
+
+        for (Node n: edges.keySet()) {
+            for (Edge e: edges.get(n)) {
+                myVertex u, v;
+
+                u = node2vertex.get(e.getTailNodeConnector().getNode());
+                v = node2vertex.get(e.getHeadNodeConnector().getNode());
+
+                NodeConnectorStatistics stat = statsManager
+                    .getNodeConnectorStatistics(e.getTailNodeConnector());
+
+                double loss_u = (stat.getTransmitDropCount() +
+                                 stat.getReceiveDropCount()) /
+                                (stat.getTransmitPacketCount() +
+                                 stat.getReceivePacketCount());
+
+                double loss = -1.0 * Math.log(1 - loss_u);
+
+                u.adj.add(new myEdge(v, loss));
+            }
+        }
+        myVertex start = node2vertex.get(source);
+        start.distance = 0.0;
+
+        myVertex end = node2vertex.get(goal);
+
+        List<Edge> ret = getPathInternal(start, end, edges);
+        long end_time = System.nanoTime();
+
+        System.out.println("Time elapsed: " + ((end_time - start_time) / 1000.) + " us");
+        return ret;
+    }
+
+    private static List<Edge> getPathInternal(myVertex start, myVertex end,
+            Map<Node, Set<Edge> > edges) {
+        PriorityQueue<myVertex> q = new PriorityQueue<myVertex>();
         q.add(start);
 
         while (!q.isEmpty()) {
             myVertex u = q.poll();
 
-            if (goal.equals(u.node)) {
+            if (end.node.equals(u.node)) {
                 /* reconstruct the path */
-                System.out.println("Path found!");
+                System.out.println("Path found, d = " + u.distance);
 
                 List<Node> path = reconstructPath(u);
                 List<Edge> ret = new ArrayList<Edge>();

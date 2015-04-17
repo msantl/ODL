@@ -20,6 +20,9 @@ import org.opendaylight.controller.switchmanager.Switch;
 import org.opendaylight.controller.sal.utils.Status;
 import org.opendaylight.controller.sal.utils.NetUtils;
 
+// import org.opendaylight.controller.statisticsmanager.IStatisticsManager;
+// import org.opendaylight.controller.sal.utils.ServiceHelper;
+
 import org.opendaylight.controller.sal.core.Edge;
 import org.opendaylight.controller.sal.core.Node;
 import org.opendaylight.controller.sal.core.NodeConnector;
@@ -290,8 +293,14 @@ public class QoSRouting implements IListenDataPacket {
         Node dstNode = dstHost.getnodeconnectorNode();
 
         Map<Node, Set<Edge> > edges = this.topologyManager.getNodeEdges();
+        /*
+        IStatisticsManager statsManager = (IStatisticsManager) ServiceHelper
+            .getInstance(IStatisticsManager.class, containerName, this);
+        */
+
         /* compute the shortest path */
-        List<Edge> path = Dijkstra.getPath(srcNode, dstNode, edges);
+        List<Edge> path = Dijkstra.getPathHopByHop(srcNode, dstNode, edges);
+            //,statsManager);
 
         /* set flow for source */
         installFlow(srcNode, srcNodeConnector, destination, source);
