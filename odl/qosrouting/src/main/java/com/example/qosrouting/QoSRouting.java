@@ -33,6 +33,7 @@ import org.opendaylight.controller.sal.utils.EtherTypes;
 import org.opendaylight.controller.sal.flowprogrammer.Flow;
 import org.opendaylight.controller.sal.action.Action;
 import org.opendaylight.controller.sal.action.Output;
+import org.opendaylight.controller.sal.action.Controller;
 import org.opendaylight.controller.sal.match.Match;
 import org.opendaylight.controller.sal.match.MatchType;
 
@@ -185,15 +186,7 @@ public class QoSRouting implements IListenDataPacket {
         return;
     }
 
-    void installFlow(Node node, NodeConnector nodeConnector,
-                     InetAddress src, InetAddress dst) {
-
-        System.out.print("Installing new flow on: " + node.toString() + " " +
-                nodeConnector.getNodeConnectorIdAsString());
-
-        List<Action> actions = new ArrayList<Action>();
-        actions.add(new Output(nodeConnector));
-
+    Match createMatch(InetAddress src, InetAddress dst) {
         Match match = new Match();
 
         /* match IPv4 ethernet packets with matching IP addresses*/
@@ -203,8 +196,27 @@ public class QoSRouting implements IListenDataPacket {
             match.setField(MatchType.NW_SRC, src);
         } catch (Exception e) {
             System.out.println("Exception: " + e.toString());
+            return null;
         }
 
+        return match;
+    }
+
+    void installFlow(Node node, NodeConnector nodeConnector,
+                     InetAddress src, InetAddress dst,
+                     boolean setContollerToListen) {
+
+        List<Action> actions = new ArrayList<Action>();
+        actions.add(new Output(nodeConnector));
+
+        if (setContollerToListen) {
+            System.out.println("Setting Controller to listen for packets on " +
+                    node.toString() + " to " + dst.getHostAddress());
+
+            actions.add(new Controller());
+        }
+
+        Match match = createMatch(src, dst);
         Flow flow = new Flow(match, actions);
         flow.setPriority(PRIORITY);
 
@@ -212,6 +224,9 @@ public class QoSRouting implements IListenDataPacket {
         String flowName = "[" + node.toString() + "] " + policyName;
 
         FlowEntry flowEntry = new FlowEntry(policyName, flowName, flow, node);
+
+        System.out.print("Installing new flow on: " + node.toString() + " " +
+                nodeConnector.getNodeConnectorIdAsString());
 
         Status s = this.forwardRulesManager.installFlowEntry(flowEntry);
 
@@ -292,39 +307,59 @@ public class QoSRouting implements IListenDataPacket {
         NodeConnector dstNodeConnector = dstHost.getnodeConnector();
         Node dstNode = dstHost.getnodeconnectorNode();
 
-        Map<Node, Set<Edge> > edges = this.topologyManager.getNodeEdges();
-        /*
-        IStatisticsManager statsManager = (IStatisticsManager) ServiceHelper
-            .getInstance(IStatisticsManager.class, containerName, this);
-        */
+        /* check if the flow already exists */
+        List<FlowEntry> flows = this.forwardRulesManager
+            .getInstalledFlowEntriesForNode(srcNode);
 
-        /* compute the shortest path */
-        List<Edge> path = Dijkstra.getPathHopByHop(srcNode, dstNode, edges);
-            //,statsManager);
+        boolean needToInstallFlow = true;
 
-        /* set flow for source */
-        installFlow(srcNode, srcNodeConnector, destination, source);
-
-        /* set flow for destination */
-        installFlow(dstNode, dstNodeConnector, source, destination);
-
-        /* install flows along the path */
-        for (Edge e: path) {
-            installFlow(e.getHeadNodeConnector().getNode(),
-                    e.getHeadNodeConnector(), source, destination);
-
-            installFlow(e.getTailNodeConnector().getNode(),
-                    e.getTailNodeConnector(), destination, source);
+        if (flows != null) {
+            for (FlowEntry flow: flows) {
+                Match match = createMatch(source, destination);
+                if (match.equals(flow.getFlow().getMatch())) {
+                    needToInstallFlow = false;
+                    break;
+                }
+            }
         }
 
-        /* send the first packet manually */
-        System.out.println("Sending packet to: " + dstNodeConnector.toString());
+        if (needToInstallFlow) {
+            Map<Node, Set<Edge> > edges = this.topologyManager.getNodeEdges();
 
-        RawPacket rp = this.dataPacketService
-            .encodeDataPacket(ipPak.getParent());
+            /* compute the shortest path */
+            List<Edge> path = Dijkstra.getPathHopByHop(srcNode, dstNode, edges);
 
-        rp.setOutgoingNodeConnector(dstNodeConnector);
-        this.dataPacketService.transmitDataPacket(rp);
+            /* set flow for source */
+            installFlow(srcNode, srcNodeConnector, destination, source, true);
+
+            /* set flow for destination */
+            installFlow(dstNode, dstNodeConnector, source, destination, true);
+
+            /* install flows along the path */
+            for (Edge e: path) {
+                installFlow(e.getHeadNodeConnector().getNode(),
+                        e.getHeadNodeConnector(), source, destination,
+                        false);
+
+                installFlow(e.getTailNodeConnector().getNode(),
+                        e.getTailNodeConnector(), destination, source,
+                        false);
+            }
+
+            /* send the first packet manually */
+            System.out.println("Sending packet to: " + dstNodeConnector.toString());
+
+            RawPacket rp = this.dataPacketService
+                .encodeDataPacket(ipPak.getParent());
+
+            rp.setOutgoingNodeConnector(dstNodeConnector);
+            this.dataPacketService.transmitDataPacket(rp);
+        } else {
+            System.out.println("Flow for matching IP addresses found!");
+        }
+
+        /* Check the packet content */
+        System.out.println("Reading packet data ...");
 
         return PacketResult.CONSUME;
     }
