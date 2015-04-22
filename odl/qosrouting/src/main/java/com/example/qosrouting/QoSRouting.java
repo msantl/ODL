@@ -41,6 +41,8 @@ import org.opendaylight.controller.sal.packet.PacketResult;
 import org.opendaylight.controller.sal.packet.Packet;
 import org.opendaylight.controller.sal.packet.RawPacket;
 import org.opendaylight.controller.sal.packet.IPv4;
+import org.opendaylight.controller.sal.packet.TCP;
+import org.opendaylight.controller.sal.packet.UDP;
 import org.opendaylight.controller.sal.packet.Ethernet;
 
 import org.opendaylight.controller.forwardingrulesmanager.FlowEntry;
@@ -239,6 +241,21 @@ public class QoSRouting implements IListenDataPacket {
         return;
     }
 
+    InetAddress parsePacketData(String data) {
+        InetAddress ret = null;
+
+        while (ret == null) {
+
+            try {
+                ret = InetAddress.getByName(data);
+            } catch(Exception e) {
+                data = data.substring(0, data.length() - 1);
+            }
+        }
+
+        return ret;
+    }
+
     @Override
     public PacketResult receiveDataPacket(RawPacket inPkt) {
         /* extract IP addresses from packet data */
@@ -359,7 +376,39 @@ public class QoSRouting implements IListenDataPacket {
         }
 
         /* Check the packet content */
-        System.out.println("Reading packet data ...");
+        try {
+            byte[] payload = null;
+            Object pak = formattedPak;
+
+            if (pak instanceof Ethernet) {
+                pak = ((Ethernet) pak).getPayload();
+                if (pak instanceof IPv4) {
+                    pak = ((IPv4) pak).getPayload();
+
+                    if (pak instanceof TCP) {
+                        payload = ((TCP) pak).getRawPayload();
+                    }
+                    if (pak instanceof UDP) {
+                        payload = ((UDP) pak).getRawPayload();
+                    }
+                }
+            }
+
+            /* parse UDP/TCP packet payload */
+            if (payload != null) {
+                String data = new String(payload, "UTF-8");
+
+                InetAddress streamAddress = parsePacketData(data);
+
+                System.out.println("Packet: " + data);
+                if (streamAddress != null) {
+                    System.out.println("IP: " + streamAddress.getHostAddress());
+                }
+            }
+
+        } catch(Exception e) {
+            System.out.println(e.toString());
+        }
 
         return PacketResult.CONSUME;
     }
