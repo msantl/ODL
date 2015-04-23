@@ -72,6 +72,7 @@
             <Bundle-Activator>com.example.qosrouting.Activator</Bundle-Activator>
             <Export-Package>com.example.qosrouting</Export-Package>
           </instructions>
+          <manifestLocation>${project.basedir}/META-INF</manifestLocation>
         </configuration>
       </plugin>
     </plugins>

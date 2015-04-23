@@ -20,8 +20,8 @@ import org.opendaylight.controller.switchmanager.Switch;
 import org.opendaylight.controller.sal.utils.Status;
 import org.opendaylight.controller.sal.utils.NetUtils;
 
-// import org.opendaylight.controller.statisticsmanager.IStatisticsManager;
-// import org.opendaylight.controller.sal.utils.ServiceHelper;
+import org.opendaylight.controller.statisticsmanager.IStatisticsManager;
+import org.opendaylight.controller.sal.utils.ServiceHelper;
 
 import org.opendaylight.controller.sal.core.Edge;
 import org.opendaylight.controller.sal.core.Node;
@@ -53,6 +53,8 @@ import org.slf4j.LoggerFactory;
 public class QoSRouting implements IListenDataPacket {
     public final String containerName = "default";
     public final short PRIORITY = 1;
+
+    public enum TrafficType {OTHER, DATA, VOICE, VIDEO};
 
     private IForwardingRulesManager forwardRulesManager;
     private IDataPacketService dataPacketService;
@@ -241,53 +243,13 @@ public class QoSRouting implements IListenDataPacket {
         return;
     }
 
-    InetAddress parsePacketData(String data) {
-        InetAddress ret = null;
-
-        while (ret == null) {
-
-            try {
-                ret = InetAddress.getByName(data);
-            } catch(Exception e) {
-                data = data.substring(0, data.length() - 1);
-            }
-        }
-
-        return ret;
-    }
-
-    @Override
-    public PacketResult receiveDataPacket(RawPacket inPkt) {
-        /* extract IP addresses from packet data */
-        Packet formattedPak = this.dataPacketService.decodeDataPacket(inPkt);
-        InetAddress source = null, destination = null;
-        IPv4 ipPak = null;
-
-        if (formattedPak instanceof Ethernet) {
-            Object nextPak = formattedPak.getPayload();
-            if (nextPak instanceof IPv4) {
-                ipPak = (IPv4)nextPak;
-
-                source = NetUtils
-                    .getInetAddress(ipPak.getSourceAddress());
-                destination = NetUtils
-                    .getInetAddress(ipPak.getDestinationAddress());
-            }
-        }
-
-        if (source == null || destination == null) {
-            return PacketResult.IGNORED;
-        }
-
-        System.out.println("Received new packet!");
-        System.out.println("Src: " + source.getHostAddress() +
-                          " Dst: " + destination.getHostAddress());
-
+    void createNewFlow(InetAddress source, InetAddress destination,
+            IPv4 ipPak, TrafficType trafficType, boolean listen) {
         /* wait until we know where the hosts are */
         System.out.print("Waiting for source to appear in known hosts");
         HostNodeConnector srcHost = null;
         do {
-            srcHost = hostManager.hostFind(source);
+            srcHost = this.hostManager.hostFind(source);
 
             try{
                 Thread.sleep(100);
@@ -303,7 +265,7 @@ public class QoSRouting implements IListenDataPacket {
         System.out.print("Waiting for destination to appear in known hosts");
         HostNodeConnector dstHost = null;
         do {
-            dstHost = hostManager.hostFind(destination);
+            dstHost = this.hostManager.hostFind(destination);
 
             try{
                 Thread.sleep(100);
@@ -343,14 +305,23 @@ public class QoSRouting implements IListenDataPacket {
         if (needToInstallFlow) {
             Map<Node, Set<Edge> > edges = this.topologyManager.getNodeEdges();
 
-            /* compute the shortest path */
-            List<Edge> path = Dijkstra.getPathHopByHop(srcNode, dstNode, edges);
+            /* compute the shortest path according to type */
+            List<Edge> path;
+
+            if (trafficType == TrafficType.VIDEO) {
+                IStatisticsManager sm = (IStatisticsManager) ServiceHelper
+                    .getInstance(IStatisticsManager.class, containerName, this);
+
+                path = Dijkstra.getPathVideo(srcNode, dstNode, edges, sm);
+            } else {
+                path = Dijkstra.getPathHopByHop(srcNode, dstNode, edges);
+            }
 
             /* set flow for source */
-            installFlow(srcNode, srcNodeConnector, destination, source, true);
+            installFlow(srcNode, srcNodeConnector, destination, source, listen);
 
             /* set flow for destination */
-            installFlow(dstNode, dstNodeConnector, source, destination, true);
+            installFlow(dstNode, dstNodeConnector, source, destination, listen);
 
             /* install flows along the path */
             for (Edge e: path) {
@@ -364,16 +335,68 @@ public class QoSRouting implements IListenDataPacket {
             }
 
             /* send the first packet manually */
-            System.out.println("Sending packet to: " + dstNodeConnector.toString());
+            if (ipPak != null) {
+                System.out.println("Sending packet to: " +
+                        dstNodeConnector.toString());
 
-            RawPacket rp = this.dataPacketService
-                .encodeDataPacket(ipPak.getParent());
+                RawPacket rp = this.dataPacketService
+                    .encodeDataPacket(ipPak.getParent());
 
-            rp.setOutgoingNodeConnector(dstNodeConnector);
-            this.dataPacketService.transmitDataPacket(rp);
+                rp.setOutgoingNodeConnector(dstNodeConnector);
+                this.dataPacketService.transmitDataPacket(rp);
+            }
+
         } else {
             System.out.println("Flow for matching IP addresses found!");
         }
+
+        return;
+    }
+
+    InetAddress parsePacketData(String data) {
+        InetAddress ret = null;
+
+        while (ret == null && data.length() > 0) {
+            try {
+                ret = InetAddress.getByName(data);
+            } catch(Exception e) {
+                data = data.substring(0, data.length() - 1);
+            }
+        }
+
+        return ret;
+    }
+
+    @Override
+    public PacketResult receiveDataPacket(RawPacket inPkt) {
+        /* extract IP addresses from packet data */
+        Packet formattedPak = this.dataPacketService.decodeDataPacket(inPkt);
+        InetAddress source = null, destination = null;
+        IPv4 ipPak = null;
+
+        if (formattedPak instanceof Ethernet) {
+            Object nextPak = formattedPak.getPayload();
+            if (nextPak instanceof IPv4) {
+                ipPak = (IPv4)nextPak;
+
+                source = NetUtils
+                    .getInetAddress(ipPak.getSourceAddress());
+                destination = NetUtils
+                    .getInetAddress(ipPak.getDestinationAddress());
+            }
+        }
+
+        if (source == null || destination == null) {
+            return PacketResult.IGNORED;
+        }
+
+        System.out.println("Received new packet!");
+        System.out.println("Src: " + source.getHostAddress() +
+                          " Dst: " + destination.getHostAddress());
+
+
+        /* create new a flow between source and destination */
+        createNewFlow(source, destination, ipPak, TrafficType.OTHER, true);
 
         /* Check the packet content */
         try {
@@ -400,9 +423,13 @@ public class QoSRouting implements IListenDataPacket {
 
                 InetAddress streamAddress = parsePacketData(data);
 
-                System.out.println("Packet: " + data);
                 if (streamAddress != null) {
                     System.out.println("IP: " + streamAddress.getHostAddress());
+
+                    /* create a new flow for video stream between destination
+                     * and stream address */
+                    createNewFlow(destination, streamAddress, null,
+                            TrafficType.VIDEO, false);
                 }
             }
 
