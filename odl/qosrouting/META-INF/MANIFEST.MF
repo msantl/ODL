@@ -1,5 +1,5 @@
 Manifest-Version: 1.0
-Bnd-LastModified: 1429790057992
+Bnd-LastModified: 1431000567719
 Build-Jdk: 1.7.0_75
 Built-By: msantl
 Bundle-Activator: com.example.qosrouting.Activator
@@ -10,10 +10,10 @@ Bundle-Version: 1.4.1.1-SNAPSHOT
 Created-By: Apache Maven Bundle Plugin
 Export-Package: com.example.qosrouting;uses:="org.opendaylight.controlle
  r.forwardingrulesmanager,org.opendaylight.controller.sal.core,org.opend
- aylight.controller.topologymanager,org.opendaylight.controller.hosttrac
- ker,org.apache.felix.dm,org.opendaylight.controller.switchmanager,org.o
- pendaylight.controller.sal.packet,org.slf4j,org.opendaylight.controller
- .statisticsmanager,org.opendaylight.controller.sal.reader,org.opendayli
+ aylight.controller.statisticsmanager,org.opendaylight.controller.hosttr
+ acker,org.opendaylight.controller.topologymanager,org.apache.felix.dm,o
+ rg.opendaylight.controller.switchmanager,org.opendaylight.controller.sa
+ l.packet,org.slf4j,org.opendaylight.controller.sal.reader,org.opendayli
  ght.controller.hosttracker.hostAware,org.opendaylight.controller.sal.ut
  ils,org.opendaylight.controller.sal.flowprogrammer,org.opendaylight.con
  troller.sal.action,org.opendaylight.controller.sal.match";version="1.4.

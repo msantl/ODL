@@ -15,6 +15,7 @@ import org.opendaylight.controller.topologymanager.ITopologyManager;
 import org.opendaylight.controller.forwardingrulesmanager.IForwardingRulesManager;
 import org.opendaylight.controller.hosttracker.IfIptoHost;
 import org.opendaylight.controller.switchmanager.ISwitchManager;
+import org.opendaylight.controller.statisticsmanager.IStatisticsManager;
 
 public class Activator extends ComponentActivatorAbstractBase {
     protected static final Logger logger = LoggerFactory
@@ -48,6 +49,11 @@ public class Activator extends ComponentActivatorAbstractBase {
             c.add(createContainerServiceDependency(containerName).setService(
                     ITopologyManager.class).setCallbacks(
                     "setTopologyManager", "unsetTopologyManager")
+                    .setRequired(true));
+
+            c.add(createContainerServiceDependency(containerName).setService(
+                    IStatisticsManager.class).setCallbacks(
+                    "setStatisticsManager", "unsetStatisticsManager")
                     .setRequired(true));
 
             c.add(createContainerServiceDependency(containerName).setService(

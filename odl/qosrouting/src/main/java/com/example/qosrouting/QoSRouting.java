@@ -8,6 +8,7 @@ import java.util.ArrayList;
 import java.util.Set;
 
 import java.util.Map;
+import java.util.HashMap;
 
 import org.opendaylight.controller.forwardingrulesmanager.IForwardingRulesManager;
 import org.opendaylight.controller.sal.packet.IDataPacketService;
@@ -21,11 +22,11 @@ import org.opendaylight.controller.sal.utils.Status;
 import org.opendaylight.controller.sal.utils.NetUtils;
 
 import org.opendaylight.controller.statisticsmanager.IStatisticsManager;
-import org.opendaylight.controller.sal.utils.ServiceHelper;
 
 import org.opendaylight.controller.sal.core.Edge;
 import org.opendaylight.controller.sal.core.Node;
 import org.opendaylight.controller.sal.core.NodeConnector;
+import org.opendaylight.controller.sal.core.Bandwidth;
 
 import org.opendaylight.controller.hosttracker.hostAware.HostNodeConnector;
 
@@ -51,8 +52,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class QoSRouting implements IListenDataPacket {
-    public final String containerName = "default";
-    public final short PRIORITY = 1;
+    public final String     containerName = "default";
+    public final String     PROPNAME = "bandwidth";
+    public final long       MTU = 1500 * 8;
+    public final short      PRIORITY = 1;
+    public final short      IDLE_TIMEOUT = 5;
 
     public enum TrafficType {OTHER, DATA, VOICE, VIDEO};
 
@@ -60,9 +64,20 @@ public class QoSRouting implements IListenDataPacket {
     private IDataPacketService dataPacketService;
     private ITopologyManager topologyManager;
     private ISwitchManager switchManager;
+    private IStatisticsManager statisticsManager;
     private IfIptoHost hostManager;
 
     private static final Logger log = LoggerFactory.getLogger(QoSRouting.class);
+
+    public void setStatisticsManager(IStatisticsManager statisticsManager) {
+        this.statisticsManager = statisticsManager;
+    }
+
+    public void unsetStatisticsManager(IStatisticsManager statisticsManager) {
+        if (this.statisticsManager == statisticsManager) {
+            this.statisticsManager = null;
+        }
+    }
 
     public void setSwitchManager(ISwitchManager switchManager) {
         this.switchManager = switchManager;
@@ -223,6 +238,7 @@ public class QoSRouting implements IListenDataPacket {
         Match match = createMatch(src, dst);
         Flow flow = new Flow(match, actions);
         flow.setPriority(PRIORITY);
+        flow.setIdleTimeout(IDLE_TIMEOUT);
 
         String policyName = src.getHostAddress() + "/" + dst.getHostAddress();
         String flowName = "[" + node.toString() + "] " + policyName;
@@ -309,10 +325,11 @@ public class QoSRouting implements IListenDataPacket {
             List<Edge> path;
 
             if (trafficType == TrafficType.VIDEO) {
-                IStatisticsManager sm = (IStatisticsManager) ServiceHelper
-                    .getInstance(IStatisticsManager.class, containerName, this);
+                path = Dijkstra.getPathVideo(srcNode, dstNode, edges, this.statisticsManager);
 
-                path = Dijkstra.getPathVideo(srcNode, dstNode, edges, sm);
+            } else if (trafficType == TrafficType.VOICE) {
+                /* path = ACO.getCustomPath() */
+                path = null;
             } else {
                 path = Dijkstra.getPathHopByHop(srcNode, dstNode, edges);
             }
@@ -364,6 +381,39 @@ public class QoSRouting implements IListenDataPacket {
             }
         }
 
+        return ret;
+    }
+
+    public Map<Node, Double> getDelayEstimations() {
+        Map<Node, Double> ret = new HashMap<Node, Double>();
+
+        for (Switch swc: this.switchManager.getNetworkDevices()) {
+            Node node = swc.getNode();
+            Double delay = 0.0;
+
+            /* get node average bandwidth */
+            Double bandwidth = 0.0;
+            for (NodeConnector nc: swc.getNodeConnectors()) {
+                /* delay is given in bps */
+                Bandwidth prop = (Bandwidth) this.switchManager
+                    .getNodeConnectorProp(nc, PROPNAME);
+
+                bandwidth += prop.getValue();
+            }
+            bandwidth /= swc.getNodeConnectors().size();
+
+            /* get flow table entries for node */
+            int flowTableEntries = this.statisticsManager
+                .getFlowsNumber(node);
+
+            delay = flowTableEntries / 2.0 * (MTU / bandwidth);
+
+            if (delay.equals(Double.NaN)) {
+                ret.put(node, Double.MAX_VALUE);
+            } else {
+                ret.put(node, delay);
+            }
+        }
         return ret;
     }
 
