@@ -23,6 +23,7 @@ import org.opendaylight.controller.sal.utils.NetUtils;
 
 import org.opendaylight.controller.statisticsmanager.IStatisticsManager;
 
+import org.opendaylight.controller.sal.reader.NodeConnectorStatistics;
 import org.opendaylight.controller.sal.core.Edge;
 import org.opendaylight.controller.sal.core.Node;
 import org.opendaylight.controller.sal.core.NodeConnector;
@@ -57,8 +58,6 @@ public class QoSRouting implements IListenDataPacket {
     public final long       MTU = 1500 * 8;
     public final short      PRIORITY = 1;
     public final short      IDLE_TIMEOUT = 5;
-
-    public enum TrafficType {OTHER, DATA, VOICE, VIDEO};
 
     private IForwardingRulesManager forwardRulesManager;
     private IDataPacketService dataPacketService;
@@ -324,14 +323,26 @@ public class QoSRouting implements IListenDataPacket {
             /* compute the shortest path according to type */
             List<Edge> path;
 
-            if (trafficType == TrafficType.VIDEO) {
-                path = Dijkstra.getPathVideo(srcNode, dstNode, edges, this.statisticsManager);
-
-            } else if (trafficType == TrafficType.VOICE) {
-                /* path = ACO.getCustomPath() */
-                path = null;
-            } else {
+            if (trafficType == TrafficType.OTHER) {
                 path = Dijkstra.getPathHopByHop(srcNode, dstNode, edges);
+            } else {
+                Map<Node, Double> packetLoss = this.getPacketLossEstimations();
+                Map<Node, Double> delay = this.getDelayEstimations();
+
+                AntColony aco = new AntColony(edges, srcNode, dstNode,
+                        trafficType, packetLoss, delay);
+
+                aco.run();
+
+                path = aco.getPath();
+
+                System.out.println("Path: ");
+                for (Edge n: path) {
+                    Node i = n.getTailNodeConnector().getNode();
+                    Node j = n.getHeadNodeConnector().getNode();
+                    System.out.println(i.toString() + " <-> " + j.toString());
+                }
+                System.out.println("-----------------");
             }
 
             /* set flow for source */
@@ -379,6 +390,29 @@ public class QoSRouting implements IListenDataPacket {
             } catch(Exception e) {
                 data = data.substring(0, data.length() - 1);
             }
+        }
+
+        return ret;
+    }
+
+    public Map<Node, Double> getPacketLossEstimations() {
+        Map<Node, Double> ret = new HashMap<Node, Double>();
+
+        for (Switch swc: this.switchManager.getNetworkDevices()) {
+            Node node = swc.getNode();
+            double loss = 1.0;
+
+            for (NodeConnector nc: this.switchManager.getUpNodeConnectors(node)) {
+                NodeConnectorStatistics stat = this.statisticsManager
+                    .getNodeConnectorStatistics(nc);
+
+                loss *= 1 - ((stat.getTransmitDropCount() +
+                              stat.getReceiveDropCount()) /
+                             (stat.getTransmitPacketCount() +
+                              stat.getReceivePacketCount()));
+            }
+
+            ret.put(node, 1 - loss);
         }
 
         return ret;
