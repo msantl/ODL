@@ -7,10 +7,11 @@ import org.opendaylight.controller.sal.core.Node;
 
 public abstract class Ant {
     public List<Node> path;
-    public double     cost;
+    public Double     cost;
 
     public Ant() {
         this.path = new ArrayList<Node>();
+        this.cost = null;
     }
 
     public List<Node> getPath() {

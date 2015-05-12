@@ -336,13 +336,18 @@ public class QoSRouting implements IListenDataPacket {
 
                 path = aco.getPath();
 
-                System.out.println("Path: ");
-                for (Edge n: path) {
-                    Node i = n.getTailNodeConnector().getNode();
-                    Node j = n.getHeadNodeConnector().getNode();
-                    System.out.println(i.toString() + " <-> " + j.toString());
+                if (path != null) {
+                    System.out.println("Path: ");
+                    for (Edge n: path) {
+                        Node i = n.getTailNodeConnector().getNode();
+                        Node j = n.getHeadNodeConnector().getNode();
+                        System.out.println(i.toString() + " <-> " + j.toString());
+                    }
+                    System.out.println("-----------------");
+                } else {
+                    System.out.println("ACO couldn't find a path!");
+                    return;
                 }
-                System.out.println("-----------------");
             }
 
             /* set flow for source */

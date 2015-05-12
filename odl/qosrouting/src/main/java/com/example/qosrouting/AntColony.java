@@ -28,13 +28,14 @@ public final class AntColony {
     protected Node destination;
 
     protected Map<Node, Integer> node2int;
+    protected Map<Integer, Node> int2node;
 
     private final double alpha = 1.0;
-    private final double beta = 2.0;
+    private final double beta = 1.0;
     private final double evaporationRate = 0.7;
 
     private final int iterations = 10;
-    private final int antPopulation = 5;
+    private final int antPopulation = 50;
 
     private TrafficType trafficType;
 
@@ -53,22 +54,34 @@ public final class AntColony {
         this.packetLoss = packetLoss;
         this.delay = delay;
 
+        /* helper map */
+        node2int = new HashMap<Node, Integer>();
+        int2node = new HashMap<Integer, Node>();
+        int id = 0;
+        for (Node node: graph.keySet()) {
+            node2int.put(node, id);
+            int2node.put(id, node);
+            id += 1;
+        }
+
+        /* initialize trails */
         this.pheromones = new double[size][size];
         this.nearness = new double[size][size];
+
+        for (int i = 0; i < size; ++i) {
+            for (int j = 0; j < size; ++j) {
+                this.pheromones[i][j] = 0.5;
+
+                this.nearness[i][j] = (1 - packetLoss.get(int2node.get(i))) *
+                                      (1 - packetLoss.get(int2node.get(j)));
+            }
+        }
 
         this.random = new Random();
 
         /* we are maximizing the MOS of each path */
         this.path = null;
         this.trail = null;
-
-        /* helper map */
-        node2int = new HashMap<Node, Integer>();
-        int id = 0;
-        for (Node node: graph.keySet()) {
-            node2int.put(node, id);
-            id += 1;
-        }
     }
 
     private void evaporatePheromones() {
@@ -135,6 +148,10 @@ public final class AntColony {
                    Math.pow(this.nearness[i][j], this.beta);
         }
 
+        if (Math.abs(sum) < 1e-9) {
+            return null;
+        }
+
         for (Edge edge: this.graph.get(src)) {
             Node dst = edge.getTailNodeConnector().getNode();
             if (dst.equals(src)) {
@@ -158,13 +175,24 @@ public final class AntColony {
         return ret;
     }
 
-    private void antRun(Ant ant) {
+    /*
+     * returns true if a path has been found, false otherwise
+     */
+    private boolean antRun(Ant ant) {
         Node curr = this.source;
         ant.addToPath(curr);
 
+        System.out.print("Path: ");
         while (!curr.equals(this.destination)) {
             Node next = null;
             Map<Node, Double> prob = this.calculateProbability(ant, curr);
+
+            System.out.print(" -> " + curr.toString());
+
+            if (prob == null) {
+                System.out.println("FAIL");
+                return false;
+            }
 
             double rand = this.random.nextDouble();
             for (Node n: prob.keySet()) {
@@ -179,6 +207,10 @@ public final class AntColony {
             ant.addToPath(next);
             curr = next;
         }
+
+        System.out.println(" -> " + curr.toString() + " OK");
+
+        return true;
     }
 
     public void run() {
@@ -188,16 +220,18 @@ public final class AntColony {
             System.out.println("Iteration: " + it);
             /* generate and release the ants */
             for (int pop = 0; pop < this.antPopulation; ++pop) {
-                System.out.print(".");
                 Ant ant = this.generateAnt();
 
                 /* find a way for each ant */
-                this.antRun(ant);
-
-                /* let each ant calculate its own cost */
-                ant.calculateCost();
-                /* keep track of this ant */
-                ants.add(ant);
+                if (this.antRun(ant)) {
+                    System.out.println("Found a path for ant: " + pop);
+                    /* let each ant calculate its own cost */
+                    ant.calculateCost();
+                    /* keep track of this ant */
+                    ants.add(ant);
+                } else {
+                    System.out.println("Failed to find a path for ant: " + pop);
+                }
             }
 
             System.out.println("Evaporating pheromones");
@@ -209,9 +243,11 @@ public final class AntColony {
                 sum += ant.getCost();
             }
 
-            System.out.println("Enhancing pheromones");
-            for (Ant ant: ants) {
-                this.enhancePheromones(ant.getPath(), ant.getCost() / sum);
+            if (Math.abs(sum) < 1e-9) {
+                System.out.println("Enhancing pheromones");
+                for (Ant ant: ants) {
+                    this.enhancePheromones(ant.getPath(), ant.getCost() / sum);
+                }
             }
         }
 
@@ -224,7 +260,9 @@ public final class AntColony {
             }
         }
 
-        this.reconstructTrail();
+        if (best_cost != null) {
+            this.reconstructTrail();
+        }
     }
 
     private void reconstructTrail() {
