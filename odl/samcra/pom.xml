@@ -9,11 +9,11 @@
   </parent>
 
   <groupId>com.example</groupId>
-  <artifactId>qosrouting</artifactId>
+  <artifactId>samcra</artifactId>
 
   <packaging>bundle</packaging>
 
-  <name>qosrouting</name>
+  <name>samcra</name>
 
   <dependencies>
     <dependency>
@@ -74,8 +74,8 @@
                             org.opendaylight.controller.sal.packet,
                             org.slf4j,
                             org.apache.felix.dm,</Import-Package>
-            <Bundle-Activator>com.example.qosrouting.Activator</Bundle-Activator>
-            <Export-Package>com.example.qosrouting</Export-Package>
+            <Bundle-Activator>com.example.samcra.Activator</Bundle-Activator>
+            <Export-Package>com.example.samcra</Export-Package>
           </instructions>
           <manifestLocation>${project.basedir}/META-INF</manifestLocation>
         </configuration>
