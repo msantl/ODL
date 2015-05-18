@@ -58,6 +58,7 @@ public class Samcra implements IListenDataPacket {
     public final long       MTU = 1500 * 8;
     public final short      PRIORITY = 1;
     public final short      IDLE_TIMEOUT = 5;
+    public final int        SAMCRA = 0;
 
     private IForwardingRulesManager forwardRulesManager;
     private IDataPacketService dataPacketService;
@@ -177,6 +178,7 @@ public class Samcra implements IListenDataPacket {
 
     void stop() {
         log.debug("STOP called!");
+        JNIXAMCRA.jnikillXamcra();
     }
 
     void clearAllFlows() {
@@ -324,6 +326,40 @@ public class Samcra implements IListenDataPacket {
 
             /* compute the shortest path according to type */
             List<Edge> path = null;
+
+            int nodeCount = 0;
+            int linkCount = 0;
+            int metricsCount = 0;
+
+            /* init XAMCRA */
+            /* JNIXAMCRA.jniinitXAMCRA(nodeCount, linkCount, metricsCount, SAMCRA); */
+
+            /* add nodes to XAMCRA */
+            /* JNIXAMCRA.jniaddNode(node_id) */
+
+            /* add links to XAMCRA
+             *
+             * double[] metrics = new double[metricsCount - 1]
+             * metrics[0] = delay
+             * metrics[1] = metric
+             * metrics[2] = TE metric
+             */
+
+            /* JNIXAMCRA.jniaddLink(src_id, dst_id, bandwidth, metrcis) */
+
+            /*
+             * int[] path = null
+             * double[] metricsContraint = new double[metricsCount - 1]
+             * nodePath = JNIXAMCRA.computePath(src_id, dst_id, bandwitdh, metricsContraint, false)
+             */
+
+            /* Convert path[] into list of edges */
+            /*
+            for (int i = 1; i < nodePath.length(); ++i) {
+                find the edge that goes from edges.get(nodePath[i-1]) to nodePath[i]
+                insert that edge into list path
+            }
+            */
 
             /* set flow for source */
             installFlow(srcNode, srcNodeConnector, destination, source, listen);

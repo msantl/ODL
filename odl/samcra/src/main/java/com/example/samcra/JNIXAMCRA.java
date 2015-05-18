@@ -26,11 +26,6 @@
 
 package com.example.samcra;
 
-import org.apache.log4j.Logger;
-import be.ac.ulg.montefiore.run.totem.repository.model.exception.AddDBException;
-import be.ac.ulg.montefiore.run.totem.repository.model.exception.NoRouteToHostException;
-import be.ac.ulg.montefiore.run.totem.repository.model.exception.RoutingException;
-
 /*
  * Changes:
  * --------
@@ -45,8 +40,6 @@ import be.ac.ulg.montefiore.run.totem.repository.model.exception.RoutingExceptio
  * @author Simon Balon (balon@run.montefiore.ulg.ac.be)
  */
 public class JNIXAMCRA {
-    private static Logger logger = Logger.getLogger(JNIXAMCRA.class);
-
     // Print the XAMCRA DB in the C code
     public native static void jniprintXamcraDB();
 
@@ -67,7 +60,7 @@ public class JNIXAMCRA {
      * Adds Node in XAMCRA database
      * @param nodeId
      */
-    public native static void jniaddNode(int nodeId) throws AddDBException;
+    public native static void jniaddNode(int nodeId);
 
     /**
      * Adds Link in XAMCRA database
@@ -75,21 +68,21 @@ public class JNIXAMCRA {
      * @param dstId
      * @param cap (available) capacity of the link
      */
-    public native static void jniaddLink(int srcId, int dstId, double cap, double[] qosMetric) throws AddDBException;
+    public native static void jniaddLink(int srcId, int dstId, double cap, double[] qosMetric);
 
     /**
      * Adds an already computed primary LSP to XAMCRA database
      * @param path the path as a list of NODE ids
      * @param reservation requested bandwidth
      */
-    public native static void  jniaddPath(int[] path, double reservation) throws AddDBException;
+    public native static void  jniaddPath(int[] path, double reservation);
 
     /**
      * Remove an already computed primary LSP to XAMCRA database
      * @param path the path as a list of NODE ids
      * @param reservation requested bandwidth
      */
-    public native static void  jniremovePath(int[] path, double reservation) throws AddDBException;
+    public native static void  jniremovePath(int[] path, double reservation);
 
     /**
      * Computes a primary LSP with XAMCRA
@@ -99,6 +92,5 @@ public class JNIXAMCRA {
      * @param ADDLSP add the LSP to the database
      * @return
      */
-    public native static int[] jnicomputePath(int src, int dst, double bandwidth, double[] qosConstraint, int ADDLSP) throws AddDBException, NoRouteToHostException, RoutingException;
-
+    public native static int[] jnicomputePath(int src, int dst, double bandwidth, double[] qosConstraint, int ADDLSP);
 }
