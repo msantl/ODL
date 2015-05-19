@@ -59,6 +59,7 @@ public class Samcra implements IListenDataPacket {
     public final short      PRIORITY = 1;
     public final short      IDLE_TIMEOUT = 5;
     public final int        SAMCRA = 0;
+    public final double     BANDWIDTH = Double.MAX_VALUE;
 
     private IForwardingRulesManager forwardRulesManager;
     private IDataPacketService dataPacketService;
@@ -327,39 +328,112 @@ public class Samcra implements IListenDataPacket {
             /* compute the shortest path according to type */
             List<Edge> path = null;
 
-            int nodeCount = 0;
+            int nodeCount = edges.keySet().size();
             int linkCount = 0;
-            int metricsCount = 0;
+            /* bandwidth, delay, packet loss*/
+            int metricsCount = 3;
+
+            /* helper structs */
+            Map<Node, Integer> node2int = new HashMap<Node, Integer>();
+            Map<Integer, Node> int2node = new HashMap<Integer, Node>();
+
+            int id = 1;
+            for (Node node: edges.keySet()) {
+                node2int.put(node, id);
+                int2node.put(id, node);
+                id += 1;
+            }
+
+
+            for (Node node: edges.keySet()) {
+                for (Edge edge: edges.get(node)) {
+                    if (edge.getHeadNodeConnector().getNode().equals(node)) continue;
+
+                    int i = node2int.get(edge.getTailNodeConnector().getNode());
+                    int j = node2int.get(edge.getHeadNodeConnector().getNode());
+
+                    if (i < j) linkCount += 1;
+                }
+            }
 
             /* init XAMCRA */
-            /* JNIXAMCRA.jniinitXAMCRA(nodeCount, linkCount, metricsCount, SAMCRA); */
+            System.out.println("Initializing XAMCRA: " + nodeCount + ", " + linkCount);
+            try {
+                JNIXAMCRA.jniinitXamcra(nodeCount, linkCount, metricsCount, SAMCRA);
+            } catch(Exception e){
+                e.printStackTrace();
+                System.out.println("init error " + e.getMessage());
+            }
 
             /* add nodes to XAMCRA */
-            /* JNIXAMCRA.jniaddNode(node_id) */
+            for (Node node: edges.keySet()) {
+                System.out.println("Adding node: " + node2int.get(node));
+                JNIXAMCRA.jniaddNode(node2int.get(node));
+            }
 
-            /* add links to XAMCRA
-             *
-             * double[] metrics = new double[metricsCount - 1]
-             * metrics[0] = delay
-             * metrics[1] = metric
-             * metrics[2] = TE metric
-             */
+            Map<Node, Double> delay = this.getDelayEstimations();
+            Map<Node, Double> packet_loss = this.getPacketLossEstimations();
 
-            /* JNIXAMCRA.jniaddLink(src_id, dst_id, bandwidth, metrcis) */
+            /* add links to XAMCRA */
+            for (Node node: edges.keySet()) {
+                for (Edge edge: edges.get(node)) {
+                    if (edge.getHeadNodeConnector().getNode().equals(node)) continue;
+                    double[] metrics = new double[metricsCount - 1];
 
-            /*
-             * int[] path = null
-             * double[] metricsContraint = new double[metricsCount - 1]
-             * nodePath = JNIXAMCRA.computePath(src_id, dst_id, bandwitdh, metricsContraint, false)
-             */
+                    Node src = edge.getTailNodeConnector().getNode();
+                    Node dst = edge.getHeadNodeConnector().getNode();
+
+                    int src_id = node2int.get(src);
+                    int dst_id = node2int.get(dst);
+
+                    if (src_id >= dst_id) continue;
+
+                    double d = delay.get(src);
+                    double p = -1 * Math.log(1 - packet_loss.get(src));
+
+                    metrics[0] = d; /* delay */
+                    metrics[1] = p; /* packet loss*/
+
+                    System.out.println("Adding link: " + src_id + ", " + dst_id);
+                    JNIXAMCRA.jniaddLink(src_id, dst_id, BANDWIDTH, metrics);
+                }
+            }
+
+            int[] nodePath = null;
+            double[] metricsContraint = new double[metricsCount - 1];
+
+            metricsContraint[0] = Double.MAX_VALUE;
+            metricsContraint[1] = Double.MAX_VALUE;
+
+            System.out.println("Computing path...");
+            nodePath = JNIXAMCRA
+                .jnicomputePath(node2int.get(srcNode), node2int.get(dstNode), BANDWIDTH, metricsContraint, 0);
 
             /* Convert path[] into list of edges */
-            /*
-            for (int i = 1; i < nodePath.length(); ++i) {
-                find the edge that goes from edges.get(nodePath[i-1]) to nodePath[i]
-                insert that edge into list path
+            for (int i = 1; i < nodePath.length; ++i) {
+                /* find the edge that goes from edges.get(nodePath[i-1]) to nodePath[i] */
+                Node src = int2node.get(nodePath[i-1]);
+                Edge e = null;
+
+                for (Edge edge: edges.get(src)) {
+                    if (edge.getTailNodeConnector().getNode().equals(src)) {
+                        Node tmp = edge.getHeadNodeConnector().getNode();
+
+                        if (node2int.get(tmp) == nodePath[i]) {
+                            e = edge;
+                            break;
+                        }
+                    }
+                }
+
+                if (e == null) {
+                    System.out.println("Couldn't find a path!");
+                    return;
+                }
+
+                /* insert that edge into list path */
+                path.add(e);
             }
-            */
 
             /* set flow for source */
             installFlow(srcNode, srcNodeConnector, destination, source, listen);

@@ -1,5 +1,5 @@
 Manifest-Version: 1.0
-Bnd-LastModified: 1431958269488
+Bnd-LastModified: 1432034735970
 Build-Jdk: 1.7.0_75
 Built-By: msantl
 Bundle-Activator: com.example.samcra.Activator
