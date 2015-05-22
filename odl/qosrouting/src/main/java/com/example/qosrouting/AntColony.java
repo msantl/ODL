@@ -214,9 +214,10 @@ public final class AntColony {
     }
 
     public void run() {
-        List<Ant> ants = new ArrayList<Ant>();
+        List<Ant> ants = null;
         /* while termination criterion is no met */
         for (int it = 0; it < this.iterations; ++it) {
+            ants = new ArrayList<Ant>();
             System.out.println("Iteration: " + it);
             /* generate and release the ants */
             for (int pop = 0; pop < this.antPopulation; ++pop) {

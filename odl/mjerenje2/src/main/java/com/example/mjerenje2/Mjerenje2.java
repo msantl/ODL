@@ -512,7 +512,7 @@ public class Mjerenje2 implements IListenDataPacket {
             trafficType = TrafficType.VOICE;
         } else if (source.getHostAddress().equals("10.0.0.3")) {
             trafficType = TrafficType.DATA;
-        } else if (source.getHostAddress().equals("10.0.0.3")) {
+        } else if (source.getHostAddress().equals("10.0.0.4")) {
             trafficType = TrafficType.OTHER;
         } else {
             response = true;

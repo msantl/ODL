@@ -217,9 +217,10 @@ public final class AntColony {
     public void run() {
         long start_time = System.nanoTime();
 
-        List<Ant> ants = new ArrayList<Ant>();
+        List<Ant> ants = null;
         /* while termination criterion is no met */
         for (int it = 0; it < this.iterations; ++it) {
+            ants = new ArrayList<Ant>();
             //System.out.println("Iteration: " + it);
             /* generate and release the ants */
             for (int pop = 0; pop < this.antPopulation; ++pop) {
@@ -269,7 +270,7 @@ public final class AntColony {
         }
 
         long end_time = System.nanoTime();
-        System.out.println("[ACO]Time elapsed: " + ((end_time - start_time) / 1000.) + " us");
+        System.out.println("[ACO][TIME] " + ((end_time - start_time) / 1000.) + " us");
     }
 
     private void reconstructTrail() {

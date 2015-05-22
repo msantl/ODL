@@ -471,7 +471,19 @@ public class Mjerenje1 implements IListenDataPacket {
         //System.out.println("Received new packet!");
 
         /* create new a flow between source and destination */
-        createNewFlow(source, destination, ipPak, TrafficType.OTHER, true);
+        TrafficType trafficType = null;
+
+        if (source.getHostAddress().equals("10.0.0.1")) {
+            trafficType = TrafficType.VIDEO;
+        } else if (source.getHostAddress().equals("10.0.0.2")) {
+            trafficType = TrafficType.VOICE;
+        } else if (source.getHostAddress().equals("10.0.0.3")) {
+            trafficType = TrafficType.DATA;
+        } else if (source.getHostAddress().equals("10.0.0.4")) {
+            trafficType = TrafficType.OTHER;
+        }
+
+        createNewFlow(source, destination, ipPak, trafficType, true);
 
         return PacketResult.CONSUME;
     }

@@ -81,7 +81,7 @@ public final class Dijkstra {
         List<Edge> ret = getPathInternal(start, end, edges);
         long end_time = System.nanoTime();
 
-        System.out.println("Time elapsed: " + ((end_time - start_time) / 1000.) + " us");
+        System.out.println("[DIJ][TIME] " + ((end_time - start_time) / 1000.) + " us");
         return ret;
     }
 
