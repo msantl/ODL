@@ -322,21 +322,52 @@ public class Mjerenje1 implements IListenDataPacket {
 
             Map<Node, Set<Edge> > edges = this.topologyManager.getNodeEdges();
 
+            Map<Node, Double> packetLoss = this.getPacketLossEstimations();
+            Map<Node, Double> delay = this.getDelayEstimations();
+
             /* compute the shortest path according to type */
             List<Edge> path;
 
             if (trafficType == TrafficType.OTHER) {
                 path = Dijkstra.getPathHopByHop(srcNode, dstNode, edges);
             } else {
-                Map<Node, Double> packetLoss = this.getPacketLossEstimations();
-                Map<Node, Double> delay = this.getDelayEstimations();
-
                 AntColony aco = new AntColony(edges, srcNode, dstNode,
                         trafficType, packetLoss, delay);
 
                 aco.run();
 
                 path = aco.getPath();
+            }
+
+            /* convert List<Edge> -> List<Path> */
+            List<Node> path_node = new ArrayList<Node>();
+            for (Edge e: path) {
+                Node n1 = e.getHeadNodeConnector().getNode();
+                Node n2 = e.getTailNodeConnector().getNode();
+
+                if (!path_node.contains(n1)) path_node.add(n1);
+                if (!path_node.contains(n2)) path_node.add(n2);
+            }
+
+            switch (trafficType) {
+                case VIDEO:
+                    System.out.print("MOS VIDEO = " + MOS.Video(path_node, packetLoss));
+                    System.out.println(" HOP = " + path_node.size());
+                    break;
+                case VOICE:
+                    System.out.print("MOS AUDIO = " + MOS.Audio(path_node, packetLoss, delay));
+                    System.out.println(" HOP = " + path_node.size());
+                    break;
+                case DATA:
+                    System.out.print("MOS DATA = " + MOS.Data(path_node, packetLoss));
+                    System.out.println(" HOP = " + path_node.size());
+                    break;
+                default:
+                    System.out.print("MOS VIDEO = " + MOS.Video(path_node, packetLoss));
+                    System.out.print(" MOS AUDIO = " + MOS.Audio(path_node, packetLoss, delay));
+                    System.out.print(" MOS DATA = " + MOS.Data(path_node, packetLoss));
+                    System.out.println(" HOP = " + path_node.size());
+                    break;
             }
 
             /* set flow for source */
@@ -480,6 +511,8 @@ public class Mjerenje1 implements IListenDataPacket {
         } else if (source.getHostAddress().equals("10.0.0.3")) {
             trafficType = TrafficType.DATA;
         } else if (source.getHostAddress().equals("10.0.0.4")) {
+            trafficType = TrafficType.OTHER;
+        } else {
             trafficType = TrafficType.OTHER;
         }
 

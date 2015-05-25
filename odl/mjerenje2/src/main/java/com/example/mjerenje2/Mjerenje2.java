@@ -479,8 +479,8 @@ public class Mjerenje2 implements IListenDataPacket {
         }
 
         //System.out.println("Received new packet!");
-        /*System.out.println("Src: " + source.getHostAddress() +
-                          " Dst: " + destination.getHostAddress());*/
+        System.out.println("Src: " + source.getHostAddress() +
+                          " Dst: " + destination.getHostAddress());
 
         /* create new a flow between source and destination */
         createNewFlow(source, destination, ipPak, TrafficType.OTHER, true);

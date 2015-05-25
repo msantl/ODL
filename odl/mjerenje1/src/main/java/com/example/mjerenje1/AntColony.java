@@ -291,9 +291,6 @@ public final class AntColony {
     }
 
     public List<Edge> getPath() {
-        if (this.trail != null) {
-            System.out.println("Path found: MOS = " + this.MOS);
-        }
         return this.trail;
     }
 

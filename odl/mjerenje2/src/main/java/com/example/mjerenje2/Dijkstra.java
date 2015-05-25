@@ -82,6 +82,7 @@ public final class Dijkstra {
         long end_time = System.nanoTime();
 
         System.out.println("[DIJ][TIME] " + ((end_time - start_time) / 1000.) + " us");
+        System.out.println("Path found: HOP = " + ret.size());
         return ret;
     }
 
@@ -125,6 +126,7 @@ public final class Dijkstra {
         long end_time = System.nanoTime();
 
         System.out.println("[DIJ][TIME] " + ((end_time - start_time) / 1000.) + " us");
+        System.out.println("Path found: HOP = " + ret.size());
         return ret;
     }
 

@@ -10,7 +10,7 @@ public class AntVoice extends Ant {
     private Map<Node, Double> delay;
 
     private double T = 5.0;
-    private double alfa = 1.0;
+    private double alfa = 3.5;
     private double beta = 1.0;
     private double gama = 1.0;
     private double theta = 1.0;
@@ -31,10 +31,10 @@ public class AntVoice extends Ant {
             De2e = De2e + this.delay.get(node);
         }
 
-        this.cost = this.T - this.alfa * Pe2e +
+        this.cost = this.T - (this.alfa * Pe2e +
                     this.beta * De2e -
                     this.gama * Math.pow(De2e, 2.0) +
-                    this.theta * Math.pow(De2e, 3.0);
+                    this.theta * Math.pow(De2e, 3.0));
     }
 
 }
