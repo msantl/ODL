@@ -7,8 +7,8 @@ import org.opendaylight.controller.sal.core.Node;
 
 public class AntVideo extends Ant {
     private Map<Node, Double> packetLoss;
-    private double P = 4.0;
-    private double Q = 1.0;
+    public double P = 3.53;
+    public double Q = 0.035;
 
     public AntVideo(Map<Node, Double> packetLoss) {
         super();

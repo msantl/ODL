@@ -31,7 +31,6 @@ import org.opendaylight.controller.sal.core.Bandwidth;
 
 import org.opendaylight.controller.hosttracker.hostAware.HostNodeConnector;
 
-import org.opendaylight.controller.sal.utils.IPProtocols;
 import org.opendaylight.controller.sal.utils.EtherTypes;
 import org.opendaylight.controller.sal.flowprogrammer.Flow;
 import org.opendaylight.controller.sal.action.Action;
@@ -44,8 +43,6 @@ import org.opendaylight.controller.sal.packet.PacketResult;
 import org.opendaylight.controller.sal.packet.Packet;
 import org.opendaylight.controller.sal.packet.RawPacket;
 import org.opendaylight.controller.sal.packet.IPv4;
-//import org.opendaylight.controller.sal.packet.TCP;
-import org.opendaylight.controller.sal.packet.UDP;
 import org.opendaylight.controller.sal.packet.Ethernet;
 
 import org.opendaylight.controller.forwardingrulesmanager.FlowEntry;
@@ -58,7 +55,7 @@ public class Mjerenje1 implements IListenDataPacket {
     public final String     PROPNAME = "bandwidth";
     public final long       MTU = 1500 * 8;
     public final short      PRIORITY = 1;
-    public final short      IDLE_TIMEOUT = 100;
+    public final short      IDLE_TIMEOUT = 5;
 
     private IForwardingRulesManager forwardRulesManager;
     private IDataPacketService dataPacketService;
@@ -102,14 +99,14 @@ public class Mjerenje1 implements IListenDataPacket {
     public void setForwardingRulesManager(
             IForwardingRulesManager forwardRulesManager) {
         this.forwardRulesManager = forwardRulesManager;
-            }
+    }
 
     public void unsetForwardingRulesManager(
             IForwardingRulesManager forwardRulesManager) {
         if (this.forwardRulesManager == forwardRulesManager) {
             this.forwardRulesManager = null;
         }
-            }
+    }
 
     public void setDataPacketService(IDataPacketService dataPacketService) {
         this.dataPacketService = dataPacketService;
@@ -189,15 +186,15 @@ public class Mjerenje1 implements IListenDataPacket {
 
             if (flows != null) {
                 for (FlowEntry flow: flows) {
-                    //System.out.print("Uninstalling flow on " + node.toString());
+                    // System.out.print("Uninstalling flow on " + node.toString());
 
                     Status s = this.forwardRulesManager
                         .uninstallFlowEntry(flow);
 
                     if (s.isSuccess()) {
-                        //System.out.println(" ... ok");
+                        // System.out.println(" ... ok");
                     } else {
-                        //System.out.println(" ... failed");
+                        // System.out.println(" ... failed");
                     }
                 }
             }
@@ -205,17 +202,14 @@ public class Mjerenje1 implements IListenDataPacket {
         return;
     }
 
-    Match createMatch(InetAddress src, InetAddress dst, byte transportProto, short srcPort, short dstPort) {
+    Match createMatch(InetAddress src, InetAddress dst) {
         Match match = new Match();
 
-        /* match udp or tcp IPv4 ethernet packets with matching IP addresses and transport ports */
+        /* match IPv4 ethernet packets with matching IP addresses*/
         try {
             match.setField(MatchType.DL_TYPE, EtherTypes.IPv4.shortValue());
             match.setField(MatchType.NW_DST, dst);
             match.setField(MatchType.NW_SRC, src);
-            match.setField(MatchType.NW_PROTO, transportProto);
-            match.setField(MatchType.TP_SRC, srcPort);
-            match.setField(MatchType.TP_DST, dstPort);
         } catch (Exception e) {
             //System.out.println("Create match exception: " + e.toString());
             return null;
@@ -225,46 +219,46 @@ public class Mjerenje1 implements IListenDataPacket {
     }
 
     void installFlow(Node node, NodeConnector nodeConnector,
-            InetAddress src, InetAddress dst, byte transportProto,
-            short srcPort, short dstPort, boolean setContollerToListen) {
+                     InetAddress src, InetAddress dst,
+                     boolean setContollerToListen) {
 
         List<Action> actions = new ArrayList<Action>();
         actions.add(new Output(nodeConnector));
 
         if (setContollerToListen) {
-            /*System.out.println("Setting Controller to listen for packets on " +
-                    node.toString() + " to " + dst.getHostAddress() + ":" + dstPort);*/
+            /*
+            System.out.println("Setting Controller to listen for packets on " +
+                    node.toString() + " to " + dst.getHostAddress());*/
+
             actions.add(new Controller());
         }
 
-        Match match = createMatch(src, dst, transportProto, srcPort, dstPort);
+        Match match = createMatch(src, dst);
         Flow flow = new Flow(match, actions);
         flow.setPriority(PRIORITY);
         flow.setIdleTimeout(IDLE_TIMEOUT);
 
-        String policyName = src.getHostAddress() + "/" + dst.getHostAddress() + "/" + srcPort + "/" + dstPort;
+        String policyName = src.getHostAddress() + "/" + dst.getHostAddress();
         String flowName = "[" + node.toString() + "] " + policyName;
 
         FlowEntry flowEntry = new FlowEntry(policyName, flowName, flow, node);
 
         /*System.out.print("Installing new flow on: " + node.toString() + " " +
-                nodeConnector.getNodeConnectorIdAsString());
-        System.out.print(" " + srcPort + " " + dstPort);*/
+                nodeConnector.getNodeConnectorIdAsString());*/
 
         Status s = this.forwardRulesManager.installFlowEntry(flowEntry);
 
         if (s.isSuccess()) {
-            //System.out.println(" ... ok");
+            // System.out.println(" ... ok");
         } else {
-            //System.out.println(" ... failed");
+            // System.out.println(" ... failed");
         }
 
         return;
     }
 
-    void createNewFlow(InetAddress source, InetAddress destination, byte transportProto,
-            short srcPort, short dstPort, IPv4 ipPak, TrafficType trafficType, boolean listen) {
-
+    void createNewFlow(InetAddress source, InetAddress destination,
+            IPv4 ipPak, TrafficType trafficType, boolean listen) {
         /* wait until we know where the hosts are */
         //System.out.print("Waiting for source to appear in known hosts");
         HostNodeConnector srcHost = null;
@@ -313,14 +307,9 @@ public class Mjerenje1 implements IListenDataPacket {
         boolean needToInstallFlow = true;
 
         if (flows != null) {
-            Match m1 = createMatch(source, destination, transportProto, srcPort, dstPort);
-            Match m2 = createMatch(destination, source, transportProto, dstPort, srcPort);
             for (FlowEntry flow: flows) {
-                if (m1.equals(flow.getFlow().getMatch())) {
-                    needToInstallFlow = false;
-                    break;
-                }
-                if (m2.equals(flow.getFlow().getMatch())) {
+                Match match = createMatch(source, destination);
+                if (match.equals(flow.getFlow().getMatch())) {
                     needToInstallFlow = false;
                     break;
                 }
@@ -332,6 +321,7 @@ public class Mjerenje1 implements IListenDataPacket {
                     " Dst: " + destination.getHostAddress());
 
             Map<Node, Set<Edge> > edges = this.topologyManager.getNodeEdges();
+
             Map<Node, Double> packetLoss = this.getPacketLossEstimations();
             Map<Node, Double> delay = this.getDelayEstimations();
 
@@ -381,21 +371,19 @@ public class Mjerenje1 implements IListenDataPacket {
             }
 
             /* set flow for source */
-            installFlow(srcNode, srcNodeConnector, destination, source, transportProto, dstPort, srcPort, listen);
+            installFlow(srcNode, srcNodeConnector, destination, source, listen);
 
             /* set flow for destination */
-            installFlow(dstNode, dstNodeConnector, source, destination, transportProto, srcPort, dstPort, listen);
+            installFlow(dstNode, dstNodeConnector, source, destination, listen);
 
             /* install flows along the path */
             for (Edge e: path) {
                 installFlow(e.getHeadNodeConnector().getNode(),
                         e.getHeadNodeConnector(), source, destination,
-                        transportProto, srcPort, dstPort,
                         false);
 
                 installFlow(e.getTailNodeConnector().getNode(),
                         e.getTailNodeConnector(), destination, source,
-                        transportProto, dstPort, srcPort,
                         false);
             }
 
@@ -412,7 +400,7 @@ public class Mjerenje1 implements IListenDataPacket {
             }
 
         } else {
-            //System.out.println("Flow for matching IP addresses and trasnport ports found!");
+            //System.out.println("Flow for matching IP addresses found!");
         }
 
         return;
@@ -444,9 +432,9 @@ public class Mjerenje1 implements IListenDataPacket {
                     .getNodeConnectorStatistics(nc);
 
                 loss *= 1 - ((stat.getTransmitDropCount() +
-                            stat.getReceiveDropCount()) /
-                        (stat.getTransmitPacketCount() +
-                         stat.getReceivePacketCount()));
+                              stat.getReceiveDropCount()) /
+                             (stat.getTransmitPacketCount() +
+                              stat.getReceivePacketCount()));
             }
 
             ret.put(node, 1 - loss);
@@ -490,69 +478,45 @@ public class Mjerenje1 implements IListenDataPacket {
 
     @Override
     public PacketResult receiveDataPacket(RawPacket inPkt) {
-        /* Extract IP addresses and transport ports from packet data */
+        /* extract IP addresses from packet data */
         Packet formattedPak = this.dataPacketService.decodeDataPacket(inPkt);
         InetAddress source = null, destination = null;
-        short srcPort, dstPort;
         IPv4 ipPak = null;
 
-        try {
-            if (formattedPak instanceof Ethernet) {
-                Object nextPak = formattedPak.getPayload();
+        if (formattedPak instanceof Ethernet) {
+            Object nextPak = formattedPak.getPayload();
+            if (nextPak instanceof IPv4) {
+                ipPak = (IPv4)nextPak;
 
-                /* Extract IP addresses from the packet */
-                if (nextPak instanceof IPv4) {
-                    ipPak = (IPv4) nextPak;
-
-                    source = NetUtils
-                        .getInetAddress(ipPak.getSourceAddress());
-                    destination = NetUtils
-                        .getInetAddress(ipPak.getDestinationAddress());
-
-                    if (source == null || destination == null) {
-                        return PacketResult.IGNORED;
-                    }
-
-                    Object transportPak = ipPak.getPayload();
-                    byte transportProto;
-
-                    /* Extract ports from the transport PDU */
-                    if (transportPak instanceof UDP) {
-                        srcPort = ((UDP) transportPak).getSourcePort();
-                        dstPort = ((UDP) transportPak).getDestinationPort();
-
-                        transportProto = IPProtocols.UDP.byteValue();
-
-                       /*System.out.println("Received new TCP packet " + srcPort
-                                + " " + dstPort);*/
-
-                        if (srcPort == 8000 || dstPort == 8000) {
-                            /* Create a new flow for video stream */
-                            createNewFlow(source, destination, transportProto,
-                                    srcPort, dstPort, ipPak,
-                                    TrafficType.VIDEO, false);
-                        } else if (srcPort == 10000 || dstPort == 10000) {
-                            /* Create a new flow for data stream */
-                            createNewFlow(source, destination, transportProto,
-                                    srcPort, dstPort, ipPak,
-                                    TrafficType.DATA, false);
-                        } else if (srcPort == 12000 || dstPort == 12000) {
-                            /* Create a new flow for OTHER stream */
-                            createNewFlow(source, destination, transportProto,
-                                    srcPort, dstPort, ipPak,
-                                    TrafficType.OTHER, false);
-                        } else if (srcPort == 6000 || dstPort == 6000) {
-                            /* Create a new flow for audio stream */
-                            createNewFlow(source, destination, transportProto,
-                                    srcPort, dstPort, ipPak,
-                                    TrafficType.VOICE, false);
-                        }
-                    }
-                }
+                source = NetUtils
+                    .getInetAddress(ipPak.getSourceAddress());
+                destination = NetUtils
+                    .getInetAddress(ipPak.getDestinationAddress());
             }
-        } catch(Exception e) {
-            //System.out.println("Receive data packet exception " + e.toString());
         }
+
+        if (source == null || destination == null) {
+            return PacketResult.IGNORED;
+        }
+
+        //System.out.println("Received new packet!");
+
+        /* create new a flow between source and destination */
+        TrafficType trafficType = null;
+
+        if (source.getHostAddress().equals("10.0.0.1")) {
+            trafficType = TrafficType.VIDEO;
+        } else if (source.getHostAddress().equals("10.0.0.2")) {
+            trafficType = TrafficType.VOICE;
+        } else if (source.getHostAddress().equals("10.0.0.3")) {
+            trafficType = TrafficType.DATA;
+        } else if (source.getHostAddress().equals("10.0.0.4")) {
+            trafficType = TrafficType.OTHER;
+        } else {
+            trafficType = TrafficType.OTHER;
+        }
+
+        createNewFlow(source, destination, ipPak, trafficType, true);
 
         return PacketResult.CONSUME;
     }

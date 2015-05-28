@@ -9,11 +9,11 @@ public class AntVoice extends Ant {
     private Map<Node, Double> packetLoss;
     private Map<Node, Double> delay;
 
-    private double T = 5.0;
-    private double alfa = 3.5;
-    private double beta = 1.0;
-    private double gama = 1.0;
-    private double theta = 1.0;
+    public double T = 4.3;
+    public double alpha = 19.5;
+    public double beta = 0.0;
+    public double gamma = 0.0186;
+    public double delta = 0.0;
 
     public AntVoice(Map<Node, Double> packetLoss, Map<Node, Double> delay) {
         super();
@@ -31,10 +31,10 @@ public class AntVoice extends Ant {
             De2e = De2e + this.delay.get(node);
         }
 
-        this.cost = this.T - (this.alfa * Pe2e +
+        this.cost = this.T - this.alpha * Pe2e +
                     this.beta * De2e -
-                    this.gama * Math.pow(De2e, 2.0) +
-                    this.theta * Math.pow(De2e, 3.0));
+                    this.gamma * Math.pow(De2e, 2.0) +
+                    this.delta * Math.pow(De2e, 3.0);
     }
 
 }
