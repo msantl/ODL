@@ -11,7 +11,7 @@ from mininet.util import quietRun
 net = Mininet(link=TCLink, switch=OVSSwitch);
  
 # number of switches/hosts
-S = 8
+S = 7
 
 switch = []
 host = []
