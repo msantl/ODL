@@ -58,7 +58,7 @@ public class Mjerenje1 implements IListenDataPacket {
     public final String     PROPNAME = "bandwidth";
     public final long       MTU = 1500 * 8;
     public final short      PRIORITY = 1;
-    public final short      IDLE_TIMEOUT = 100;
+    public final short      IDLE_TIMEOUT = 5;
 
     private IForwardingRulesManager forwardRulesManager;
     private IDataPacketService dataPacketService;
@@ -262,7 +262,7 @@ public class Mjerenje1 implements IListenDataPacket {
         return;
     }
 
-    void createNewFlow(InetAddress source, InetAddress destination, byte transportProto,
+    boolean createNewFlow(InetAddress source, InetAddress destination, byte transportProto,
             short srcPort, short dstPort, IPv4 ipPak, TrafficType trafficType, boolean listen) {
 
         /* wait until we know where the hosts are */
@@ -332,8 +332,8 @@ public class Mjerenje1 implements IListenDataPacket {
                     " Dst: " + destination.getHostAddress());
 
             Map<Node, Set<Edge> > edges = this.topologyManager.getNodeEdges();
-            Map<Node, Double> packetLoss = this.getPacketLossEstimations();
-            Map<Node, Double> delay = this.getDelayEstimations();
+            Map<Node, Double> packetLoss = this.getPacketLossEstimationsDummy();
+            Map<Node, Double> delay = this.getDelayEstimationsDummy();
 
             /* compute the shortest path according to type */
             List<Edge> path;
@@ -358,6 +358,11 @@ public class Mjerenje1 implements IListenDataPacket {
                 if (!path_node.contains(n1)) path_node.add(n1);
                 if (!path_node.contains(n2)) path_node.add(n2);
             }
+
+            System.out.print("path: ");
+            for (Node n: path_node) {
+                System.out.print(n.toString() + " -> ");
+            }   System.out.println(" |");
 
             switch (trafficType) {
                 case VIDEO:
@@ -411,11 +416,13 @@ public class Mjerenje1 implements IListenDataPacket {
                 this.dataPacketService.transmitDataPacket(rp);
             }
 
+            return true;
+
         } else {
             //System.out.println("Flow for matching IP addresses and trasnport ports found!");
         }
 
-        return;
+        return false;
     }
 
     InetAddress parsePacketData(String data) {
@@ -432,6 +439,120 @@ public class Mjerenje1 implements IListenDataPacket {
         return ret;
     }
 
+    public Map<Node, Double> getPacketLossEstimationsDummy() {
+        Map<Node, Double> ret = new HashMap<Node, Double>();
+
+        String of2 = "OF|00:00:00:00:00:00:00:02";
+        String of3 = "OF|00:00:00:00:00:00:00:03";
+        String of8 = "OF|00:00:00:00:00:00:00:08";
+        String of1 = "OF|00:00:00:00:00:00:00:01";
+        String of4 = "OF|00:00:00:00:00:00:00:04";
+        String of7 = "OF|00:00:00:00:00:00:00:07";
+        String of6 = "OF|00:00:00:00:00:00:00:06";
+        String of5 = "OF|00:00:00:00:00:00:00:05";
+        String of9 = "OF|00:00:00:00:00:00:00:09";
+        String ofa = "OF|00:00:00:00:00:00:00:0a";
+        String ofb = "OF|00:00:00:00:00:00:00:0b";
+        String ofc = "OF|00:00:00:00:00:00:00:0c";
+        String ofd = "OF|00:00:00:00:00:00:00:0d";
+        String ofe = "OF|00:00:00:00:00:00:00:0e";
+
+        for (Switch swc: this.switchManager.getNetworkDevices()) {
+            Node node = swc.getNode();
+            double loss = 0.0;
+
+            if (node.toString().equals(of1)) {
+                loss = 0.0;
+            } else if (node.toString().equals(of2)) {
+                loss = 2 / 100.;
+            } else if (node.toString().equals(of3)) {
+                loss = 0.0;
+            } else if (node.toString().equals(of4)) {
+                loss = 1 / 100.;
+            } else if (node.toString().equals(of5)) {
+                loss = 1 / 100.;
+            } else if (node.toString().equals(of6)) {
+                loss = 0.5 / 100.;
+            } else if (node.toString().equals(of7)) {
+                loss = 0.5 / 100.;
+            } else if (node.toString().equals(of8)) {
+                loss = 0.5 / 100.;
+            } else if (node.toString().equals(of9)) {
+                loss = 0.0;
+            } else if (node.toString().equals(ofa)) {
+                loss = 0.0;
+            } else if (node.toString().equals(ofb)) {
+                loss = 0.0;
+            } else if (node.toString().equals(ofc)) {
+                loss = 0.0;
+            } else if (node.toString().equals(ofd)) {
+                loss = 0.0;
+            } else if (node.toString().equals(ofe)) {
+                loss = 0.0;
+            }
+
+            ret.put(node, loss);
+        }
+        return ret;
+    }
+
+    public Map<Node, Double> getDelayEstimationsDummy() {
+        Map<Node, Double> ret = new HashMap<Node, Double>();
+
+        String of2 = "OF|00:00:00:00:00:00:00:02";
+        String of3 = "OF|00:00:00:00:00:00:00:03";
+        String of8 = "OF|00:00:00:00:00:00:00:08";
+        String of1 = "OF|00:00:00:00:00:00:00:01";
+        String of4 = "OF|00:00:00:00:00:00:00:04";
+        String of7 = "OF|00:00:00:00:00:00:00:07";
+        String of6 = "OF|00:00:00:00:00:00:00:06";
+        String of5 = "OF|00:00:00:00:00:00:00:05";
+        String of9 = "OF|00:00:00:00:00:00:00:09";
+        String ofa = "OF|00:00:00:00:00:00:00:0a";
+        String ofb = "OF|00:00:00:00:00:00:00:0b";
+        String ofc = "OF|00:00:00:00:00:00:00:0c";
+        String ofd = "OF|00:00:00:00:00:00:00:0d";
+        String ofe = "OF|00:00:00:00:00:00:00:0e";
+
+        for (Switch swc: this.switchManager.getNetworkDevices()) {
+            Node node = swc.getNode();
+            double delay = 0.0;
+
+            if (node.toString().equals(of1)) {
+                delay = 0.0;
+            } else if (node.toString().equals(of2)) {
+                delay = 100 / 1000.;
+            } else if (node.toString().equals(of3)) {
+                delay = 0.0;
+            } else if (node.toString().equals(of4)) {
+                delay = 50 / 1000.;
+            } else if (node.toString().equals(of5)) {
+                delay = 50 / 1000.;
+            } else if (node.toString().equals(of6)) {
+                delay = 10 / 1000.;
+            } else if (node.toString().equals(of7)) {
+                delay = 10 / 1000.;
+            } else if (node.toString().equals(of8)) {
+                delay = 10 / 1000.;
+            } else if (node.toString().equals(of9)) {
+                delay = 0.0;
+            } else if (node.toString().equals(ofa)) {
+                delay = 0.0;
+            } else if (node.toString().equals(ofb)) {
+                delay = 0.0;
+            } else if (node.toString().equals(ofc)) {
+                delay = 0.0;
+            } else if (node.toString().equals(ofd)) {
+                delay = 0.0;
+            } else if (node.toString().equals(ofe)) {
+                delay = 0.0;
+            }
+
+            ret.put(node, delay);
+        }
+        return ret;
+    }
+
     public Map<Node, Double> getPacketLossEstimations() {
         Map<Node, Double> ret = new HashMap<Node, Double>();
 
@@ -443,9 +564,9 @@ public class Mjerenje1 implements IListenDataPacket {
                 NodeConnectorStatistics stat = this.statisticsManager
                     .getNodeConnectorStatistics(nc);
 
-                loss *= 1 - ((stat.getTransmitDropCount() +
+                loss *= 1 - ((1.0 * stat.getTransmitDropCount() +
                             stat.getReceiveDropCount()) /
-                        (stat.getTransmitPacketCount() +
+                        (1.0 * stat.getTransmitPacketCount() +
                          stat.getReceivePacketCount()));
             }
 
@@ -525,27 +646,34 @@ public class Mjerenje1 implements IListenDataPacket {
 
                        /*System.out.println("Received new TCP packet " + srcPort
                                 + " " + dstPort);*/
+                        double start_time = System.nanoTime();
+                        boolean printTime = false;
 
                         if (srcPort == 8000 || dstPort == 8000) {
                             /* Create a new flow for video stream */
-                            createNewFlow(source, destination, transportProto,
+                            printTime = createNewFlow(source, destination, transportProto,
                                     srcPort, dstPort, ipPak,
                                     TrafficType.VIDEO, false);
                         } else if (srcPort == 10000 || dstPort == 10000) {
                             /* Create a new flow for data stream */
-                            createNewFlow(source, destination, transportProto,
+                            printTime = createNewFlow(source, destination, transportProto,
                                     srcPort, dstPort, ipPak,
                                     TrafficType.DATA, false);
                         } else if (srcPort == 12000 || dstPort == 12000) {
                             /* Create a new flow for OTHER stream */
-                            createNewFlow(source, destination, transportProto,
+                            printTime = createNewFlow(source, destination, transportProto,
                                     srcPort, dstPort, ipPak,
                                     TrafficType.OTHER, false);
                         } else if (srcPort == 6000 || dstPort == 6000) {
                             /* Create a new flow for audio stream */
-                            createNewFlow(source, destination, transportProto,
+                            printTime = createNewFlow(source, destination, transportProto,
                                     srcPort, dstPort, ipPak,
                                     TrafficType.VOICE, false);
+                        }
+
+                        double end_time = System.nanoTime();
+                        if (printTime == true) {
+                            System.out.println("Time elapsed: " + ((end_time - start_time) / 1000.) + " us");
                         }
                     }
                 }

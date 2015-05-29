@@ -9,7 +9,7 @@ public class AntData extends Ant {
     private Map<Node, Double> packetLoss;
     public double a = 10.9272;
     public double b = 258.117;
-    public double c = 1.0;
+    public double c = 21.8544;
 
     public AntData(Map<Node, Double> packetLoss) {
         super();

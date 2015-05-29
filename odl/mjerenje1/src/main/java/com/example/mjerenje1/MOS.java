@@ -8,7 +8,7 @@ import org.opendaylight.controller.sal.core.Node;
 public class MOS{
     public static double a = 10.9272;
     public static double b = 258.117;
-    public static double c = 1.0;
+    public static double c = 21.8544;
 
     public static double P = 3.53;
     public static double Q = 0.035;

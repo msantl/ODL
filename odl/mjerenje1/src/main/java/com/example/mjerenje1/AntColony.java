@@ -33,10 +33,10 @@ public final class AntColony {
 
     private final double alpha = 1.0;
     private final double beta = 1.0;
-    private final double evaporationRate = 0.7;
 
     private final int iterations = 10;
-    private final int antPopulation = 25;
+    private final int antPopulation = 15;
+    private final double evaporationRate = 0.5;
 
     private TrafficType trafficType;
 
@@ -72,7 +72,6 @@ public final class AntColony {
         for (int i = 0; i < size; ++i) {
             for (int j = 0; j < size; ++j) {
                 this.pheromones[i][j] = 0.5;
-
                 this.nearness[i][j] = (1 - packetLoss.get(int2node.get(i))) *
                                       (1 - packetLoss.get(int2node.get(j)));
             }
