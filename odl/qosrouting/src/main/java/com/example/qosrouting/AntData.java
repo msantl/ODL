@@ -7,9 +7,9 @@ import org.opendaylight.controller.sal.core.Node;
 
 public class AntData extends Ant {
     private Map<Node, Double> packetLoss;
-    private double a = 5.0;
-    private double b = 1.0;
-    private double c = 1.0;
+    public double a = 10.9272;
+    public double b = 258.117;
+    public double c = 21.8544;
 
     public AntData(Map<Node, Double> packetLoss) {
         super();
@@ -24,6 +24,6 @@ public class AntData extends Ant {
             Pe2e = 1 - (1 - Pe2e) * (1 - this.packetLoss.get(node));
         }
 
-        this.cost = this.a - Math.log(this.b * this.c * (1 - Pe2e));
+        this.cost = this.a * Math.log(this.b * (1 - Pe2e));
     }
 }

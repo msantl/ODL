@@ -22,6 +22,7 @@ public final class AntColony {
     protected int size;
     protected Map<Node, Double> packetLoss;
     protected Map<Node, Double> delay;
+    protected double MOS;
 
     protected Random random;
     protected Node source;
@@ -32,10 +33,10 @@ public final class AntColony {
 
     private final double alpha = 1.0;
     private final double beta = 1.0;
-    private final double evaporationRate = 0.7;
 
     private final int iterations = 10;
-    private final int antPopulation = 50;
+    private final int antPopulation = 15;
+    private final double evaporationRate = 0.5;
 
     private TrafficType trafficType;
 
@@ -71,7 +72,6 @@ public final class AntColony {
         for (int i = 0; i < size; ++i) {
             for (int j = 0; j < size; ++j) {
                 this.pheromones[i][j] = 0.5;
-
                 this.nearness[i][j] = (1 - packetLoss.get(int2node.get(i))) *
                                       (1 - packetLoss.get(int2node.get(j)));
             }
@@ -120,7 +120,7 @@ public final class AntColony {
         } else if (this.trafficType == TrafficType.DATA) {
             ant = new AntData(this.packetLoss);
         } else {
-            System.out.println("Traffic type not set");
+            //System.out.println("Traffic type not set");
         }
 
         return ant;
@@ -182,15 +182,15 @@ public final class AntColony {
         Node curr = this.source;
         ant.addToPath(curr);
 
-        System.out.print("Path: ");
+        //System.out.print("Path: ");
         while (!curr.equals(this.destination)) {
             Node next = null;
             Map<Node, Double> prob = this.calculateProbability(ant, curr);
 
-            System.out.print(" -> " + curr.toString());
+            //System.out.print(" -> " + curr.toString());
 
             if (prob == null) {
-                System.out.println("FAIL");
+                //System.out.println("FAIL");
                 return false;
             }
 
@@ -208,34 +208,36 @@ public final class AntColony {
             curr = next;
         }
 
-        System.out.println(" -> " + curr.toString() + " OK");
+        //System.out.println(" -> " + curr.toString() + " OK");
 
         return true;
     }
 
     public void run() {
+        long start_time = System.nanoTime();
+
         List<Ant> ants = null;
         /* while termination criterion is no met */
         for (int it = 0; it < this.iterations; ++it) {
             ants = new ArrayList<Ant>();
-            System.out.println("Iteration: " + it);
+            //System.out.println("Iteration: " + it);
             /* generate and release the ants */
             for (int pop = 0; pop < this.antPopulation; ++pop) {
                 Ant ant = this.generateAnt();
 
                 /* find a way for each ant */
                 if (this.antRun(ant)) {
-                    System.out.println("Found a path for ant: " + pop);
+                    //System.out.println("Found a path for ant: " + pop);
                     /* let each ant calculate its own cost */
                     ant.calculateCost();
                     /* keep track of this ant */
                     ants.add(ant);
                 } else {
-                    System.out.println("Failed to find a path for ant: " + pop);
+                    //System.out.println("Failed to find a path for ant: " + pop);
                 }
             }
 
-            System.out.println("Evaporating pheromones");
+            //System.out.println("Evaporating pheromones");
             /* evaporate pheromones */
             this.evaporatePheromones();
             /* add pheromones from ant trails */
@@ -245,7 +247,7 @@ public final class AntColony {
             }
 
             if (Math.abs(sum) < 1e-9) {
-                System.out.println("Enhancing pheromones");
+                //System.out.println("Enhancing pheromones");
                 for (Ant ant: ants) {
                     this.enhancePheromones(ant.getPath(), ant.getCost() / sum);
                 }
@@ -262,8 +264,12 @@ public final class AntColony {
         }
 
         if (best_cost != null) {
+            this.MOS = best_cost;
             this.reconstructTrail();
         }
+
+        long end_time = System.nanoTime();
+        System.out.println("[ACO][TIME] " + ((end_time - start_time) / 1000.) + " us");
     }
 
     private void reconstructTrail() {
