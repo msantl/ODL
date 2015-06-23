@@ -26,7 +26,7 @@ Switch6 = net.addSwitch('s6')
  
 # Add links
 # set link speeds to 10Mbit/s
-linkopts = dict(bw=10)
+linkopts = dict(bw=10, loss=10)
 
 net.addLink(Switch1,  Switch2,    **linkopts )
 net.addLink(Switch1,  Switch3,    **linkopts )
